@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Plotly from 'plotly.js-dist-min';
 import { 
   Activity, 
@@ -6,12 +6,10 @@ import {
   TrendingUp, 
   Layers, 
   Compass, 
-  Play, 
-  Pause, 
-  RotateCcw,
-  CheckCircle,
-  Clock,
-  Sparkles
+  CheckCircle, 
+  Sparkles,
+  Sliders,
+  Clock
 } from 'lucide-react';
 
 export function GraphsDashboard({
@@ -24,7 +22,8 @@ export function GraphsDashboard({
   strokeLimitMm = 40,
   metrics = { rmse: 0, correlationPercent: 100, latencyMs: 0 },
   playbackIndex = 0,
-  onScrubTime = null
+  onScrubTime = null,
+  theme = 'dark'
 }) {
   const accelPlotRef = useRef(null);
   const dispPlotRef = useRef(null);
@@ -32,24 +31,29 @@ export function GraphsDashboard({
   const telemetryPlotRef = useRef(null);
 
   const [showVelocity, setShowVelocity] = useState(false);
+  const isDark = theme === 'dark';
 
-  // Common Dark Engineering Theme Plotly Layout
-  const baseLayout = {
+  // Common Apple HIG Engineering Theme Plotly Layout
+  const baseLayout = useMemo(() => ({
     paper_bgcolor: 'transparent',
-    plot_bgcolor: 'rgba(15, 23, 42, 0.65)',
-    margin: { l: 48, r: 24, t: 30, b: 36 },
-    font: { family: 'JetBrains Mono, monospace', color: '#94a3b8', size: 10 },
+    plot_bgcolor: isDark ? 'rgba(13, 17, 23, 0.45)' : 'rgba(255, 255, 255, 0.55)',
+    margin: { l: 45, r: 20, t: 28, b: 34 },
+    font: { 
+      family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', 
+      color: isDark ? '#94A3B8' : '#64748B', 
+      size: 10 
+    },
     xaxis: {
-      gridcolor: 'rgba(51, 65, 85, 0.4)',
-      zerolinecolor: 'rgba(100, 116, 139, 0.6)',
+      gridcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
       showgrid: true,
-      tickfont: { size: 9, color: '#64748b' }
+      tickfont: { size: 9, color: isDark ? '#64748B' : '#94A3B8' }
     },
     yaxis: {
-      gridcolor: 'rgba(51, 65, 85, 0.4)',
-      zerolinecolor: 'rgba(100, 116, 139, 0.6)',
+      gridcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+      zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
       showgrid: true,
-      tickfont: { size: 9, color: '#64748b' }
+      tickfont: { size: 9, color: isDark ? '#64748B' : '#94A3B8' }
     },
     showlegend: true,
     legend: {
@@ -57,11 +61,13 @@ export function GraphsDashboard({
       xanchor: 'right',
       y: 1.15,
       orientation: 'h',
-      font: { size: 10, color: '#cbd5e1' },
-      bgcolor: 'rgba(15, 23, 42, 0.8)'
+      font: { size: 10, color: isDark ? '#E2E8F0' : '#334155' },
+      bgcolor: isDark ? 'rgba(22, 27, 34, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+      bordercolor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+      borderwidth: 1
     },
     autosize: true
-  };
+  }), [isDark]);
 
   const plotlyConfig = {
     responsive: true,
@@ -82,7 +88,7 @@ export function GraphsDashboard({
     if (!element) return;
     try {
       Plotly.react(element, data, layout, config).catch((err) => {
-        console.warn('Plotly render promise notice:', err?.message || err);
+        console.warn('Plotly render notice:', err?.message || err);
       });
     } catch (err) {
       console.warn('Plotly synchronous call notice:', err?.message || err);
@@ -102,11 +108,10 @@ export function GraphsDashboard({
         type: 'scatter',
         mode: 'lines',
         name: 'Ground Accel (g)',
-        line: { color: '#38bdf8', width: 1.5 }
+        line: { color: isDark ? '#0A84FF' : '#0071E3', width: 1.6 }
       }
     ];
 
-    // Current playback vertical cursor
     const shapes = [
       {
         type: 'line',
@@ -116,7 +121,7 @@ export function GraphsDashboard({
         x1: currentTime,
         y0: 0,
         y1: 1,
-        line: { color: '#f59e0b', width: 1.5, dash: 'dot' }
+        line: { color: '#FF9F0A', width: 1.5, dash: 'dot' }
       }
     ];
 
@@ -124,7 +129,7 @@ export function GraphsDashboard({
       ...baseLayout,
       title: {
         text: '1. Ground Acceleration Input a(t)',
-        font: { size: 12, color: '#e2e8f0', weight: 600 },
+        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
         x: 0.02,
         y: 0.95
       },
@@ -134,7 +139,7 @@ export function GraphsDashboard({
     };
 
     safePlotlyReact(accelPlotRef.current, data, layout, plotlyConfig);
-  }, [timeArray, accelArray, playbackIndex]);
+  }, [timeArray, accelArray, playbackIndex, baseLayout, isDark]);
 
   // 2. Calculated Table Displacement Profile Plot
   useEffect(() => {
@@ -151,7 +156,7 @@ export function GraphsDashboard({
         type: 'scatter',
         mode: 'lines',
         name: 'Table Disp x(t) [mm]',
-        line: { color: '#06b6d4', width: 2 }
+        line: { color: isDark ? '#30B0C7' : '#0071E3', width: 2 }
       }
     ];
 
@@ -163,11 +168,10 @@ export function GraphsDashboard({
         mode: 'lines',
         name: 'Velocity v(t) [mm/s]',
         yaxis: 'y2',
-        line: { color: '#a855f7', width: 1, dash: 'dash' }
+        line: { color: isDark ? '#BF5AF2' : '#AF52DE', width: 1.2, dash: 'dash' }
       });
     }
 
-    // Physical bounds lines (+strokeLimit and -strokeLimit)
     const shapes = [
       {
         type: 'line',
@@ -177,7 +181,7 @@ export function GraphsDashboard({
         x1: tEnd,
         y0: strokeLimitMm,
         y1: strokeLimitMm,
-        line: { color: '#f43f5e', width: 1.5, dash: 'dash' }
+        line: { color: '#FF453A', width: 1.5, dash: 'dash' }
       },
       {
         type: 'line',
@@ -187,7 +191,7 @@ export function GraphsDashboard({
         x1: tEnd,
         y0: -strokeLimitMm,
         y1: -strokeLimitMm,
-        line: { color: '#f43f5e', width: 1.5, dash: 'dash' }
+        line: { color: '#FF453A', width: 1.5, dash: 'dash' }
       },
       {
         type: 'line',
@@ -197,7 +201,7 @@ export function GraphsDashboard({
         x1: currentTime,
         y0: 0,
         y1: 1,
-        line: { color: '#f59e0b', width: 1.5, dash: 'dot' }
+        line: { color: '#FF9F0A', width: 1.5, dash: 'dot' }
       }
     ];
 
@@ -209,7 +213,7 @@ export function GraphsDashboard({
         yref: 'y',
         text: `+Limit (${strokeLimitMm}mm)`,
         showarrow: false,
-        font: { size: 9, color: '#f43f5e' },
+        font: { size: 9, color: '#FF453A' },
         xanchor: 'left',
         yanchor: 'bottom'
       },
@@ -220,7 +224,7 @@ export function GraphsDashboard({
         yref: 'y',
         text: `-Limit (-${strokeLimitMm}mm)`,
         showarrow: false,
-        font: { size: 9, color: '#f43f5e' },
+        font: { size: 9, color: '#FF453A' },
         xanchor: 'left',
         yanchor: 'top'
       }
@@ -229,8 +233,8 @@ export function GraphsDashboard({
     const layout = {
       ...baseLayout,
       title: {
-        text: '2. Table Displacement Profile x(t) [Trapezoidal Double Integration]',
-        font: { size: 12, color: '#e2e8f0', weight: 600 },
+        text: '2. Table Displacement Profile x(t) [Zero-Drift Double Integration]',
+        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
         x: 0.02,
         y: 0.95
       },
@@ -240,19 +244,18 @@ export function GraphsDashboard({
       annotations
     };
 
-    // Only add yaxis2 if velocity toggle is actively on
     if (showVelocity) {
       layout.yaxis2 = {
-        title: { text: 'Velocity (mm/s)', font: { size: 10, color: '#a855f7' } },
+        title: { text: 'Velocity (mm/s)', font: { size: 10, color: isDark ? '#BF5AF2' : '#AF52DE' } },
         overlaying: 'y',
         side: 'right',
         showgrid: false,
-        tickfont: { size: 9, color: '#a855f7' }
+        tickfont: { size: 9, color: isDark ? '#BF5AF2' : '#AF52DE' }
       };
     }
 
     safePlotlyReact(dispPlotRef.current, data, layout, plotlyConfig);
-  }, [timeArray, dispArray, velocityArray, showVelocity, strokeLimitMm, playbackIndex]);
+  }, [timeArray, dispArray, velocityArray, showVelocity, strokeLimitMm, playbackIndex, baseLayout, isDark]);
 
   // 3. FFT Frequency Spectrum Plot
   useEffect(() => {
@@ -266,8 +269,8 @@ export function GraphsDashboard({
         mode: 'lines',
         fill: 'tozeroy',
         name: 'Spectral Magnitude |X(f)|',
-        line: { color: '#818cf8', width: 1.5 },
-        fillcolor: 'rgba(99, 102, 241, 0.15)'
+        line: { color: isDark ? '#5E5CE6' : '#5856D6', width: 1.8 },
+        fillcolor: isDark ? 'rgba(94, 92, 230, 0.15)' : 'rgba(88, 86, 214, 0.1)'
       }
     ];
 
@@ -278,16 +281,16 @@ export function GraphsDashboard({
         y: fftData.peakMagnitude,
         xref: 'x',
         yref: 'y',
-        text: `Peak: ${fftData.dominantFreq} Hz (${fftData.peakMagnitude.toFixed(3)})`,
+        text: `Resonance: ${fftData.dominantFreq} Hz (${fftData.peakMagnitude.toFixed(3)})`,
         showarrow: true,
         arrowhead: 2,
         arrowsize: 1,
-        arrowcolor: '#38bdf8',
+        arrowcolor: isDark ? '#0A84FF' : '#0071E3',
         ax: 20,
         ay: -25,
-        font: { size: 10, color: '#38bdf8' },
-        bgcolor: '#0f172a',
-        bordercolor: '#38bdf8',
+        font: { size: 10, color: isDark ? '#0A84FF' : '#0071E3' },
+        bgcolor: isDark ? '#161B22' : '#FFFFFF',
+        bordercolor: isDark ? '#0A84FF' : '#0071E3',
         borderwidth: 1
       });
     }
@@ -295,8 +298,8 @@ export function GraphsDashboard({
     const layout = {
       ...baseLayout,
       title: {
-        text: `3. FFT Amplitude Spectrum (Dominant: ${fftData.dominantFreq} Hz)`,
-        font: { size: 12, color: '#e2e8f0', weight: 600 },
+        text: `3. FFT Amplitude Spectrum (Peak Resonance: ${fftData.dominantFreq} Hz)`,
+        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
         x: 0.02,
         y: 0.95
       },
@@ -306,7 +309,7 @@ export function GraphsDashboard({
     };
 
     safePlotlyReact(fftPlotRef.current, data, layout, plotlyConfig);
-  }, [fftData]);
+  }, [fftData, baseLayout, isDark]);
 
   // 4. Telemetry Overlay: Commanded vs Measured ADXL356 Plot
   useEffect(() => {
@@ -318,7 +321,7 @@ export function GraphsDashboard({
       type: 'scatter',
       mode: 'lines',
       name: 'Commanded Accel (g)',
-      line: { color: '#38bdf8', width: 1.5 }
+      line: { color: isDark ? '#0A84FF' : '#0071E3', width: 1.6 }
     };
 
     let traceMeas = null;
@@ -333,17 +336,16 @@ export function GraphsDashboard({
         type: 'scatter',
         mode: 'lines',
         name: 'Measured ADXL356 (g)',
-        line: { color: '#10b981', width: 1.8 }
+        line: { color: isDark ? '#30D158' : '#34C759', width: 1.8 }
       };
     } else {
-      // If no telemetry yet, show dimmed synthetic demonstration
       traceMeas = {
         x: timeArray,
-        y: accelArray.map(a => a * 0.97 + (Math.sin(a * 15) * 0.005)),
+        y: accelArray.map(a => a * 0.98 + (Math.sin(a * 15) * 0.004)),
         type: 'scatter',
         mode: 'lines',
-        name: 'Expected ADXL356 Response',
-        line: { color: '#10b981', width: 1.2, dash: 'dot' }
+        name: 'Expected ADXL356 Loopback',
+        line: { color: isDark ? '#30D158' : '#34C759', width: 1.2, dash: 'dot' }
       };
     }
 
@@ -359,7 +361,7 @@ export function GraphsDashboard({
         x1: currentTime,
         y0: 0,
         y1: 1,
-        line: { color: '#f59e0b', width: 1.5, dash: 'dot' }
+        line: { color: '#FF9F0A', width: 1.5, dash: 'dot' }
       }
     ];
 
@@ -367,7 +369,7 @@ export function GraphsDashboard({
       ...baseLayout,
       title: {
         text: '4. Telemetry Overlay: Commanded vs. ADXL356 Accelerometer',
-        font: { size: 12, color: '#e2e8f0', weight: 600 },
+        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
         x: 0.02,
         y: 0.95
       },
@@ -377,9 +379,9 @@ export function GraphsDashboard({
     };
 
     safePlotlyReact(telemetryPlotRef.current, data, layout, plotlyConfig);
-  }, [timeArray, accelArray, telemetryStream, playbackIndex]);
+  }, [timeArray, accelArray, telemetryStream, playbackIndex, baseLayout, isDark]);
 
-  // Window resize handler to keep charts responsive
+  // Window resize handler
   useEffect(() => {
     const handleResize = () => {
       [accelPlotRef, dispPlotRef, fftPlotRef, telemetryPlotRef].forEach((ref) => {
@@ -398,36 +400,36 @@ export function GraphsDashboard({
   return (
     <div className="flex flex-col gap-4">
       
-      {/* Top Row: Waveform Metrics & Live Telemetry Summary */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-lg flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+      {/* Top Telemetry Summary Pill Bar */}
+      <div className="p-4 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-wrap items-center justify-between gap-4 font-tabular text-xs">
         
         {/* Telemetry Accuracy Scores */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Correlation (Rxy):</span>
-            <span className={`text-sm font-bold ${metrics.correlationPercent >= 90 ? 'text-emerald-400' : 'text-amber-400'}`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
+            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">Correlation (Rxy):</span>
+            <span className={`text-xs font-bold ${metrics.correlationPercent >= 90 ? 'text-emerald-500' : 'text-amber-500'}`}>
               {metrics.correlationPercent}%
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">RMSE Error:</span>
-            <span className="text-sm font-bold text-cyan-400">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
+            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">RMSE Error:</span>
+            <span className="text-xs font-bold text-[#0071E3] dark:text-[#0A84FF]">
               {metrics.rmse.toFixed(4)} g
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Latency / Lag (τ):</span>
-            <span className="text-sm font-bold text-amber-400">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
+            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">Phase Lag (τ):</span>
+            <span className="text-xs font-bold text-amber-500">
               {metrics.latencyMs >= 0 ? `+${metrics.latencyMs}` : metrics.latencyMs} ms
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider">Zero Return Drift:</span>
-            <span className="text-sm font-bold text-emerald-400 flex items-center gap-1">
-              <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
+            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">Zero Return:</span>
+            <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
+              <CheckCircle className="w-3.5 h-3.5" />
               0.00 mm
             </span>
           </div>
@@ -435,38 +437,38 @@ export function GraphsDashboard({
 
         {/* Chart View Controls */}
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 cursor-pointer text-slate-300 hover:text-white select-none">
+          <label className="flex items-center gap-2 cursor-pointer text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white select-none text-xs font-medium">
             <input
               type="checkbox"
               checked={showVelocity}
               onChange={(e) => setShowVelocity(e.target.checked)}
-              className="accent-purple-500 rounded"
+              className="accent-[#0071E3] dark:accent-[#0A84FF] rounded-md cursor-pointer"
             />
-            <span className="text-[11px]">Overlay Velocity v(t)</span>
+            <span>Overlay Velocity v(t)</span>
           </label>
         </div>
       </div>
 
-      {/* 4 Interactive Charts Grid */}
+      {/* 4 Interactive Apple HIG Engineering Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* Chart 1: Input Acceleration */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-xl flex flex-col">
+        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
           <div ref={accelPlotRef} className="w-full h-[280px]" />
         </div>
 
         {/* Chart 2: Displacement Profile */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-xl flex flex-col">
+        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
           <div ref={dispPlotRef} className="w-full h-[280px]" />
         </div>
 
         {/* Chart 3: FFT Spectrum */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-xl flex flex-col">
+        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
           <div ref={fftPlotRef} className="w-full h-[280px]" />
         </div>
 
         {/* Chart 4: Commanded vs Measured Telemetry */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 shadow-xl flex flex-col">
+        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
           <div ref={telemetryPlotRef} className="w-full h-[280px]" />
         </div>
 

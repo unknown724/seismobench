@@ -2,73 +2,217 @@
 
 @layer base {
   :root {
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+
+    /* Light Mode Tokens (Apple Ceramic) */
+    --color-bg-base: #F5F5F7;
+    --color-bg-grouped: #FFFFFF;
+    --color-bg-elevated: #FFFFFF;
+    --color-glass-surface: rgba(255, 255, 255, 0.75);
+    --color-glass-surface-subtle: rgba(255, 255, 255, 0.5);
+    --color-glass-border: rgba(0, 0, 0, 0.08);
+    --color-glass-border-highlight: rgba(255, 255, 255, 0.9);
+    --color-text-primary: #1D1D1F;
+    --color-text-secondary: #86868B;
+    --color-text-tertiary: #A1A1A6;
+    
+    /* Apple HIG Semantic Accents */
+    --color-sf-blue: #0071E3;
+    --color-sf-teal: #30B0C7;
+    --color-sf-green: #34C759;
+    --color-sf-orange: #FF9500;
+    --color-sf-red: #FF3B30;
+    --color-sf-purple: #5856D6;
+
+    /* Shadow Hierarchy */
+    --shadow-glass-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+    --shadow-glass-md: 0 12px 32px -4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --shadow-glass-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark {
+    /* Dark Mode Tokens (Apple Obsidian / Slate) */
+    --color-bg-base: #0B0E14;
+    --color-bg-grouped: #161B22;
+    --color-bg-elevated: #1C2128;
+    --color-glass-surface: rgba(22, 27, 34, 0.72);
+    --color-glass-surface-subtle: rgba(255, 255, 255, 0.04);
+    --color-glass-border: rgba(255, 255, 255, 0.08);
+    --color-glass-border-highlight: rgba(255, 255, 255, 0.15);
+    --color-text-primary: #F0F6FC;
+    --color-text-secondary: #8B949E;
+    --color-text-tertiary: #484F58;
+
+    /* Apple HIG Dark Semantics */
+    --color-sf-blue: #0A84FF;
+    --color-sf-teal: #64D2FF;
+    --color-sf-green: #30D158;
+    --color-sf-orange: #FF9F0A;
+    --color-sf-red: #FF453A;
+    --color-sf-purple: #5E5CE6;
+
+    /* Shadow Hierarchy Dark */
+    --shadow-glass-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.25);
+    --shadow-glass-md: 0 12px 32px -4px rgba(0, 0, 0, 0.45), 0 4px 14px rgba(0, 0, 0, 0.3);
+    --shadow-glass-lg: 0 28px 64px -12px rgba(0, 0, 0, 0.65), 0 12px 28px rgba(0, 0, 0, 0.4);
   }
 
   body {
     font-family: var(--font-sans);
-    background-color: #090d16;
-    color: #e2e8f0;
+    background-color: var(--color-bg-base);
+    color: var(--color-text-primary);
+    letter-spacing: -0.015em;
     overflow-x: hidden;
+    transition: background-color 0.3s cubic-bezier(0.16, 1, 0.3, 1), color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   code, pre, .font-mono {
     font-family: var(--font-mono);
   }
+
+  /* Apple Tabular Numerals for high-frequency telemetry */
+  .tabular-nums, .font-tabular {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
 }
 
-/* Custom Scrollbar for Dark Engineering Theme */
+/* Glassmorphism Classes (Apple Liquid Glass) */
+.glass-panel {
+  background: var(--color-glass-surface);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: inset 0 1px 0 0 var(--color-glass-border-highlight), var(--shadow-glass-md);
+  border-radius: 1.25rem;
+}
+
+.glass-card {
+  background: var(--color-glass-surface);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: inset 0 1px 0 0 var(--color-glass-border-highlight), var(--shadow-glass-sm);
+  border-radius: 1rem;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px) scale(1.008);
+  border-color: rgba(10, 132, 255, 0.35);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.2), var(--shadow-glass-md);
+}
+
+.glass-dock {
+  background: var(--color-glass-surface);
+  backdrop-filter: blur(30px) saturate(200%);
+  -webkit-backdrop-filter: blur(30px) saturate(200%);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: inset 0 1px 0 0 var(--color-glass-border-highlight), var(--shadow-glass-lg);
+  border-radius: 9999px;
+}
+
+.glass-pill {
+  background: var(--color-glass-surface-subtle);
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 9999px;
+}
+
+.glass-input {
+  background: var(--color-glass-surface-subtle);
+  border: 1px solid var(--color-glass-border);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-input:focus {
+  border-color: var(--color-sf-blue);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.25);
+  outline: none;
+}
+
+/* Apple Spring Click Response */
+.btn-press {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+}
+
+.btn-press:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+/* Custom Apple Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f172a;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
+  background: rgba(120, 120, 128, 0.28);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+  background: rgba(120, 120, 128, 0.5);
+  background-clip: padding-box;
 }
 
-/* Custom Glow Accents */
-.glow-cyan {
-  box-shadow: 0 0 15px -3px rgba(6, 182, 212, 0.35);
+/* Epicenter Ripple Animation for Seismic Maps */
+@keyframes epicenter-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
 }
 
-.glow-emerald {
-  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.35);
+.animate-epicenter-ripple {
+  animation: epicenter-pulse 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
 
-.glow-amber {
-  box-shadow: 0 0 15px -3px rgba(245, 158, 11, 0.35);
+/* Shimmer Loading Effect */
+@keyframes glass-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
-.glow-rose {
-  box-shadow: 0 0 15px -3px rgba(244, 63, 94, 0.35);
+.shimmer-sweep {
+  position: relative;
+  overflow: hidden;
 }
 
-/* Engineering Grid Background */
-.bg-grid-pattern {
-  background-size: 24px 24px;
-  background-image: 
-    linear-gradient(to right, rgba(51, 65, 85, 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(51, 65, 85, 0.12) 1px, transparent 1px);
-}
-
-/* Pulse animation for live telemetry */
-@keyframes signal-ping {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.15); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
-}
-
-.animate-signal {
-  animation: signal-ping 1.5s infinite ease-in-out;
+.shimmer-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 100%
+  );
+  animation: glass-shimmer 2s infinite;
 }

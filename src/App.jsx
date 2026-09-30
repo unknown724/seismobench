@@ -6,6 +6,10 @@ import { ShakeTableVisualizer } from './components/ShakeTableVisualizer';
 import { GraphsDashboard } from './components/GraphsDashboard';
 import { SerialTerminalModal } from './components/SerialTerminalModal';
 import { PayloadGeneratorModal } from './components/PayloadGeneratorModal';
+import { GlobalMap } from './components/GlobalMap';
+import { LiveFeedView } from './components/LiveFeedView';
+import { AnalyticsView } from './components/AnalyticsView';
+import { CommandPaletteModal } from './components/CommandPaletteModal';
 
 import { doubleIntegrateDriftFree } from './dsp/integration';
 import { computeFFT } from './dsp/fft';
@@ -17,9 +21,39 @@ import {
   generateNorthridgeWaveform, 
   generateSineSweep 
 } from './data/earthquakes';
+import { INITIAL_SEISMIC_FEED } from './data/seismicFeed';
 import { SeismoSerialController } from './serial/serialController';
 
 export function App() {
+  // Navigation & Theme
+  const [activeView, setActiveView] = useState('bench'); // 'bench' | 'feed' | 'map' | 'analytics'
+  const [theme, setTheme] = useState(() => {
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  });
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Sync theme with HTML root class
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Command palette keyboard shortcut (⌘K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Serial Controller Instance
   const serialRef = useRef(null);
   if (!serialRef.current) {
@@ -177,7 +211,6 @@ export function App() {
   // Telemetry Evaluation Metrics (RMSE, Cross-Correlation Rxy, Latency)
   const telemetryMetrics = useMemo(() => {
     if (telemetryStream.length < 5) {
-      // Prior to live run, show high baseline fidelity benchmark
       return {
         rmse: 0.0032,
         correlationPercent: 99.4,
@@ -239,7 +272,6 @@ export function App() {
   const handleExecuteShake = async () => {
     setTelemetryStream([]);
     try {
-      // If buffer not loaded yet, load automatically then run
       if (serial.trajectoryBuffer.length === 0) {
         await handleUploadBuffer();
       }
@@ -277,10 +309,15 @@ export function App() {
   }, [rawWaveform, dspResult.time.length]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30 selection:text-cyan-200">
+    <div className="min-h-screen bg-[#F5F5F7] dark:bg-[#0B0E14] text-neutral-800 dark:text-neutral-100 flex flex-col font-sans selection:bg-[#0071E3]/20 selection:text-[#0071E3] transition-colors duration-300">
       
-      {/* Top Header Bar */}
+      {/* Apple Translucent Top Header Bar */}
       <Header
+        activeView={activeView}
+        onChangeView={setActiveView}
+        theme={theme}
+        onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
+        onOpenSearch={() => setIsCommandPaletteOpen(true)}
         connectionState={connectionState}
         isSimulated={isSimulated}
         onConnectPhysical={handleConnectPhysical}
@@ -298,82 +335,133 @@ export function App() {
       />
 
       {/* Main Workspace Layout */}
-      <main className="max-w-7xl mx-auto w-full p-4 flex-1 flex flex-col gap-4">
+      <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 flex-1 flex flex-col gap-6">
         
-        {/* Hardware Carriage Visualizer Bar */}
-        <ShakeTableVisualizer
-          currentDispMm={currentCarriage.dispMm}
-          currentAccelG={currentCarriage.accelG}
-          currentVelocityMmS={currentCarriage.velocityMmS}
-          strokeLimitMm={config.strokeLimitMm}
-          connectionState={connectionState}
-          isSimulated={isSimulated}
-        />
-
-        {/* 2-Column Responsive Dashboard Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          
-          {/* Left Column: Data Ingestion & Physical Hardware Parameters (4 Cols) */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            
-            <DataIngestionPanel
-              selectedEarthquakeId={selectedEarthquakeId}
-              onSelectEarthquake={handleSelectEarthquake}
-              customWaveform={customWaveform}
-              onUploadCustomCSV={handleUploadCustomCSV}
-              waveformMeta={waveformMeta}
-              amplitudeScale={amplitudeScale}
-              onChangeAmplitudeScale={setAmplitudeScale}
-              timeScale={timeScale}
-              onChangeTimeScale={setTimeScale}
-            />
-
-            <ConfigSidebar
-              config={config}
-              onChangeConfig={(patch) => setConfig(prev => ({ ...prev, ...patch }))}
-              strokeWarning={strokeWarning}
-              onApplyRecommendedScale={handleApplyRecommendedScale}
-            />
-
-          </div>
-
-          {/* Right Column: 4 Synchronized Engineering Graphs (8 Cols) */}
-          <div className="lg:col-span-8 flex flex-col gap-4">
-            <GraphsDashboard
-              timeArray={dspResult.time}
-              accelArray={dspResult.accelFiltered}
-              dispArray={dspResult.displacement}
-              velocityArray={dspResult.velocity}
-              fftData={fftData}
-              telemetryStream={telemetryStream}
+        {/* VIEW 1: SEISMOGRAM & SHAKE BENCH */}
+        {activeView === 'bench' && (
+          <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+            {/* Hardware Carriage Visualizer Bar */}
+            <ShakeTableVisualizer
+              currentDispMm={currentCarriage.dispMm}
+              currentAccelG={currentCarriage.accelG}
+              currentVelocityMmS={currentCarriage.velocityMmS}
               strokeLimitMm={config.strokeLimitMm}
-              metrics={telemetryMetrics}
-              playbackIndex={playbackIndex}
-              onScrubTime={(idx) => setPlaybackIndex(idx)}
+              connectionState={connectionState}
+              isSimulated={isSimulated}
+            />
+
+            {/* 2-Column Responsive Dashboard Body */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Left Column: Data Ingestion & Physical Parameters (4 Cols) */}
+              <div className="lg:col-span-4 flex flex-col gap-6">
+                <DataIngestionPanel
+                  selectedEarthquakeId={selectedEarthquakeId}
+                  onSelectEarthquake={handleSelectEarthquake}
+                  customWaveform={customWaveform}
+                  onUploadCustomCSV={handleUploadCustomCSV}
+                  waveformMeta={waveformMeta}
+                  amplitudeScale={amplitudeScale}
+                  onChangeAmplitudeScale={setAmplitudeScale}
+                  timeScale={timeScale}
+                  onChangeTimeScale={setTimeScale}
+                />
+
+                <ConfigSidebar
+                  config={config}
+                  onChangeConfig={(patch) => setConfig(prev => ({ ...prev, ...patch }))}
+                  strokeWarning={strokeWarning}
+                  onApplyRecommendedScale={handleApplyRecommendedScale}
+                />
+              </div>
+
+              {/* Right Column: 4 Synchronized Engineering Graphs (8 Cols) */}
+              <div className="lg:col-span-8 flex flex-col gap-6">
+                <GraphsDashboard
+                  timeArray={dspResult.time}
+                  accelArray={dspResult.accelFiltered}
+                  dispArray={dspResult.displacement}
+                  velocityArray={dspResult.velocity}
+                  fftData={fftData}
+                  telemetryStream={telemetryStream}
+                  strokeLimitMm={config.strokeLimitMm}
+                  metrics={telemetryMetrics}
+                  playbackIndex={playbackIndex}
+                  onScrubTime={(idx) => setPlaybackIndex(idx)}
+                  theme={theme}
+                />
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* VIEW 2: LIVE FEED VIEW */}
+        {activeView === 'feed' && (
+          <LiveFeedView
+            onSelectAndRun={(recordId) => {
+              handleSelectEarthquake(recordId);
+              setActiveView('bench');
+            }}
+          />
+        )}
+
+        {/* VIEW 3: GLOBAL SEISMIC MAP */}
+        {activeView === 'map' && (
+          <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+            <GlobalMap
+              onLoadIntoShakeTable={(recordId) => {
+                handleSelectEarthquake(recordId);
+                setActiveView('bench');
+              }}
             />
           </div>
+        )}
 
-        </div>
+        {/* VIEW 4: ANALYTICS & RESPONSE SPECTRUM */}
+        {activeView === 'analytics' && (
+          <AnalyticsView
+            waveformMeta={waveformMeta}
+            dspResult={dspResult}
+            fftData={fftData}
+            metrics={telemetryMetrics}
+            theme={theme}
+          />
+        )}
 
       </main>
 
-      {/* Footer */}
-      <footer className="bg-slate-950 border-t border-slate-900 py-3 px-4 text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-2">
+      {/* Apple Styled Footer */}
+      <footer className="mt-auto backdrop-blur-xl bg-white/60 dark:bg-[#161B22]/60 border-t border-black/[0.04] dark:border-white/[0.06] py-3.5 px-6 text-xs font-mono text-neutral-400 dark:text-neutral-500 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span>SeismoBench Precision Shake Table Suite</span>
+          <span className="font-semibold text-neutral-700 dark:text-neutral-300">SeismoBench</span>
+          <span>•</span>
+          <span>Apple HIG Liquid Glass Architecture</span>
           <span>•</span>
           <span>ESP32-S3 Dual-Core LX7 + FreeRTOS</span>
-          <span>•</span>
-          <span>Analog Devices ADXL356 (±10g / ±20g, Low-Noise 80µg/√Hz)</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-cyan-400/80">Web Serial API Active</span>
+          <span className="text-[#0071E3] dark:text-[#0A84FF]">Web Serial API v2</span>
           <span>•</span>
-          <span>Butterworth 2nd-Order Zero-Phase DSP</span>
+          <span>Analog Devices ADXL356 (80µg/√Hz Low-Noise)</span>
         </div>
       </footer>
 
-      {/* Modals */}
+      {/* Spotlight Command Palette (⌘K) */}
+      <CommandPaletteModal
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onChangeView={setActiveView}
+        onSelectEarthquake={handleSelectEarthquake}
+        onExecuteShake={handleExecuteShake}
+        onEmergencyStop={handleEmergencyStop}
+        onHomeTable={handleHomeTable}
+        onOpenTerminal={() => setIsTerminalOpen(true)}
+        onOpenPayloadModal={() => setIsPayloadOpen(true)}
+        onUploadBuffer={handleUploadBuffer}
+      />
+
+      {/* Serial Terminal Modal */}
       <SerialTerminalModal
         isOpen={isTerminalOpen}
         onClose={() => setIsTerminalOpen(false)}
@@ -389,6 +477,7 @@ export function App() {
         onDisconnect={handleDisconnect}
       />
 
+      {/* ESP32 Payload & Firmware Modal */}
       <PayloadGeneratorModal
         isOpen={isPayloadOpen}
         onClose={() => setIsPayloadOpen(false)}

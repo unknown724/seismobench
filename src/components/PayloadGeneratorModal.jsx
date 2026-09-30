@@ -58,212 +58,207 @@ export function PayloadGeneratorModal({
   const cHeaderCode = `// SeismoBench Trajectory Header for ESP32-S3
 // Generated automatically: ${new Date().toISOString()}
 // Waveform: ${waveformMeta.name || 'Seismic Waveform'}
-// Total Points: ${trajectoryPoints.length} | Resolution: ${stepsPerMm} steps/mm
+// Steps/mm: ${stepsPerMm} | Points: ${trajectoryPoints.length}
 
-#ifndef SEISMO_TRAJECTORY_H
-#define SEISMO_TRAJECTORY_H
+#ifndef SEISMOBENCH_TRAJECTORY_H
+#define SEISMOBENCH_TRAJECTORY_H
 
 #include <Arduino.h>
 
-#define TRAJECTORY_POINTS_COUNT ${trajectoryPoints.length}
-#define STEPS_PER_MM ${stepsPerMm}f
-#define DT_MILLISECONDS ${Math.round((trajectoryPoints[1]?.t_ms - trajectoryPoints[0]?.t_ms) || 20)}
-
-// Packed Step Targets [target_step] in Microsteps
-const int32_t PROGMEM SEISMO_STEPS[TRAJECTORY_POINTS_COUNT] = {
-${trajectoryPoints.map(p => `  ${p.target_step}`).join(',\n')}
+struct TrajectoryStep {
+  uint32_t t_ms;
+  int32_t target_step;
+  float disp_mm;
+  float accel_g;
 };
 
-// Commanded Acceleration Reference (milli-g's)
-const int16_t PROGMEM SEISMO_ACCEL_MG[TRAJECTORY_POINTS_COUNT] = {
-${trajectoryPoints.map(p => `  ${Math.round(p.accel_g * 1000)}`).join(',\n')}
+const uint16_t TRAJECTORY_COUNT = ${trajectoryPoints.length};
+
+const TrajectoryStep SEISMIC_TRAJECTORY[TRAJECTORY_COUNT] PROGMEM = {
+${trajectoryPoints.slice(0, 150).map(p => `  { ${p.t_ms}, ${p.target_step}, ${p.disp_mm}f, ${p.accel_g}f }`).join(',\n')}${trajectoryPoints.length > 150 ? `,\n  // ... ${trajectoryPoints.length - 150} points truncated for header preview` : ''}
 };
 
-#endif // SEISMO_TRAJECTORY_H
+#endif // SEISMOBENCH_TRAJECTORY_H
 `;
 
-  // 3. Complete Ready-to-Flash ESP32-S3 Arduino C++ Firmware Sketch
-  const esp32FirmwareCode = `/*
- * SeismoBench: ESP32-S3 Dual-Stepper Precision Shake Table Firmware
- * Target: ESP32-S3-DevKitC-1 (Dual-Core LX7, 240MHz, FreeRTOS)
- * Drivers: TMC2209 UART / STEP-DIR (Dual Axis Coordinated Drive)
- * Sensor: ADXL356 3-Axis Analog / SPI Accelerometer
- * 
- * Communication: Web Serial API @ 921600 baud
- * Protocol: JSON Chunked Streaming & Real-time Telemetry (TLM)
+  // 3. Complete ESP32-S3 C++ Arduino / ESP-IDF Firmware
+  const esp32FirmwareCode = `/**
+ * ============================================================================
+ * SeismoBench ESP32-S3 Precision Dual-Stepper Shake Table Controller
+ * Target Hardware: ESP32-S3 DevKit-C (Dual-Core LX7 @ 240MHz)
+ * Motor Drivers: Dual TMC2209 Stepper Drivers (UART or Step/Dir mode)
+ * Sensor: Analog Devices ADXL356 3-Axis Analog Accelerometer
+ * ============================================================================
  */
 
 #include <Arduino.h>
-#include <SPI.h>
+#include <ArduinoJson.h>
 
-// ========== HARDWARE PIN DEFINITIONS ==========
-#define STEP_PIN_1       15  // Stepper 1 STEP (NEMA 17 Left)
-#define DIR_PIN_1        16  // Stepper 1 DIR
-#define STEP_PIN_2       17  // Stepper 2 STEP (NEMA 17 Right - Co-planar)
-#define DIR_PIN_2        18  // Stepper 2 DIR
-#define ENABLE_PIN       8   // TMC2209 Active-LOW Enable
+// --- PIN DEFINITIONS ---
+// TMC2209 Motor Left (X1)
+#define PIN_STEP_L     15
+#define PIN_DIR_L      16
+#define PIN_EN_L       17
 
-// ADXL356 Sensor Pins (Analog or High-Speed SPI)
-#define ADXL_X_PIN       4   // Analog ADC1_CH3 or SPI MOSI
-#define LIMIT_SW_LEFT    1   // Optical Home Limit Switch
-#define LIMIT_SW_RIGHT   2   // Optical Endstop Limit Switch
+// TMC2209 Motor Right (X2 - Dual Synced)
+#define PIN_STEP_R     18
+#define PIN_DIR_R      19
+#define PIN_EN_R       21
 
-// Kinematic Constants
+// ADXL356 Accelerometer Analog Inputs (Low Noise)
+#define PIN_ADXL_X     4   // ADC1_CH3
+#define PIN_ADXL_Y     5   // ADC1_CH4
+#define PIN_ADXL_Z     6   // ADC1_CH5
+
+// Optical Endstops / Limits
+#define PIN_LIMIT_MIN  7
+#define PIN_LIMIT_MAX  8
+
+// --- CONFIGURATION PARAMETERS ---
 const float STEPS_PER_MM = ${stepsPerMm}f;
-const float MM_PER_REV   = 40.0f; // GT2 20T Belt
+const uint32_t SERIAL_BAUD = 921600;
 
-// Motion State Variables
-volatile int32_t current_step_pos = 0;
-volatile int32_t target_step_pos  = 0;
-volatile bool is_shaking          = false;
-volatile bool estop_active        = false;
+// Dual Stepper Position Tracking
+volatile int32_t currentStepPos = 0;
+volatile int32_t targetStepPos = 0;
+volatile bool isRunning = false;
+volatile bool isHomed = false;
 
-// Buffer Memory in DMA SRAM
-#define MAX_BUFFER_POINTS 3000
-int32_t trajectory_buffer[MAX_BUFFER_POINTS];
-uint16_t buffer_length = 0;
-uint16_t playback_idx  = 0;
-uint32_t sample_interval_us = 20000; // 50Hz (20ms default)
+// Task handles
+TaskHandle_t hStepMotorTask;
+TaskHandle_t hTelemetryTask;
 
-hw_timer_t *motion_timer = NULL;
+// --- STEPPER HARDWARE TIMER ISR (HIGH FREQUENCY) ---
+void IRAM_ATTR onStepTimer() {
+  if (!isRunning) return;
 
-// ========== TIMER INTERRUPT (FreeRTOS ISR) ==========
-void IRAM_ATTR onMotionTimerISR() {
-  if (!is_shaking || estop_active) return;
-
-  if (playback_idx < buffer_length) {
-    target_step_pos = trajectory_buffer[playback_idx];
-
-    // Pulse Steppers towards target position
-    int32_t delta = target_step_pos - current_step_pos;
-    if (delta != 0) {
-      bool dir = delta > 0;
-      digitalWrite(DIR_PIN_1, dir ? HIGH : LOW);
-      digitalWrite(DIR_PIN_2, dir ? HIGH : LOW);
-
-      // Execute synchronous step pulse
-      digitalWrite(STEP_PIN_1, HIGH);
-      digitalWrite(STEP_PIN_2, HIGH);
-      delayMicroseconds(2);
-      digitalWrite(STEP_PIN_1, LOW);
-      digitalWrite(STEP_PIN_2, LOW);
-
-      current_step_pos += (dir ? 1 : -1);
-    }
-
-    playback_idx++;
-  } else {
-    is_shaking = false;
+  if (currentStepPos < targetStepPos) {
+    digitalWrite(PIN_DIR_L, HIGH);
+    digitalWrite(PIN_DIR_R, HIGH);
+    digitalWrite(PIN_STEP_L, HIGH);
+    digitalWrite(PIN_STEP_R, HIGH);
+    delayMicroseconds(2);
+    digitalWrite(PIN_STEP_L, LOW);
+    digitalWrite(PIN_STEP_R, LOW);
+    currentStepPos++;
+  } else if (currentStepPos > targetStepPos) {
+    digitalWrite(PIN_DIR_L, LOW);
+    digitalWrite(PIN_DIR_R, LOW);
+    digitalWrite(PIN_STEP_L, HIGH);
+    digitalWrite(PIN_STEP_R, HIGH);
+    delayMicroseconds(2);
+    digitalWrite(PIN_STEP_L, LOW);
+    digitalWrite(PIN_STEP_R, LOW);
+    currentStepPos--;
   }
 }
 
-// ========== ADXL356 TELEMETRY SAMPLING ==========
-float readADXL356AccelG() {
-  // ADXL356 sensitivity: 400 mV/g (nominal VDD=3.3V)
-  int raw_adc = analogRead(ADXL_X_PIN);
-  float voltage = (raw_adc / 4095.0f) * 3.3f;
-  float zero_bias = 1.65f; // Mid-scale offset
-  float accel_g = (voltage - zero_bias) / 0.400f;
-  return accel_g;
+// --- CORE 1: FAST TELEMETRY & ADXL356 SAMPLING ---
+void TelemetryTask(void *pvParameters) {
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = pdMS_TO_TICKS(20); // 50 Hz (20ms interval)
+
+  for (;;) {
+    vTaskDelayUntil(&xLastWakeTime, xFrequency);
+
+    if (isRunning) {
+      // 12-bit ADC reading on ESP32-S3 (0-4095, 3.3V)
+      // ADXL356 sensitivity: 80 mV/g (±10g range)
+      int rawX = analogRead(PIN_ADXL_X);
+      float vX = (rawX / 4095.0f) * 3.3f;
+      float accelG = (vX - 1.65f) / 0.080f; // Zero-bias at 1.65V
+
+      float currentDispMm = (float)currentStepPos / STEPS_PER_MM;
+
+      // Stream high-speed JSON packet to Web Serial
+      Serial.printf("{\\"type\\":\\"TELEMETRY\\",\\"time\\":%lu,\\"accel\\":%.4f,\\"disp\\":%.3f}\\n",
+        millis(), accelG, currentDispMm);
+    }
+  }
 }
 
+// --- SETUP & HARDWARE INITIALIZATION ---
 void setup() {
-  Serial.begin(921600);
-  Serial.setRxBufferSize(8192);
+  Serial.begin(SERIAL_BAUD);
+  while (!Serial && millis() < 3000);
 
-  pinMode(STEP_PIN_1, OUTPUT);
-  pinMode(DIR_PIN_1, OUTPUT);
-  pinMode(STEP_PIN_2, OUTPUT);
-  pinMode(DIR_PIN_2, OUTPUT);
-  pinMode(ENABLE_PIN, OUTPUT);
-  digitalWrite(ENABLE_PIN, LOW); // Enable drivers
+  // Stepper Pins
+  pinMode(PIN_STEP_L, OUTPUT);
+  pinMode(PIN_DIR_L, OUTPUT);
+  pinMode(PIN_EN_L, OUTPUT);
+  pinMode(PIN_STEP_R, OUTPUT);
+  pinMode(PIN_DIR_R, OUTPUT);
+  pinMode(PIN_EN_R, OUTPUT);
 
-  pinMode(LIMIT_SW_LEFT, INPUT_PULLUP);
-  pinMode(LIMIT_SW_RIGHT, INPUT_PULLUP);
+  // Active-Low Driver Enable
+  digitalWrite(PIN_EN_L, LOW);
+  digitalWrite(PIN_EN_R, LOW);
+
+  // ADC Sensor Pins
   analogReadResolution(12);
+  analogSetAttenuation(ADC_11db); // Full-scale ~3.1V
 
-  // Initialize FreeRTOS Hardware Timer at 50Hz
-  motion_timer = timerBegin(0, 80, true); // 80MHz / 80 = 1MHz tick
-  timerAttachInterrupt(motion_timer, &onMotionTimerISR, true);
-  timerAlarmWrite(motion_timer, sample_interval_us, true);
-  timerAlarmEnable(motion_timer);
+  // Spawn RTOS Telemetry Task on Core 1
+  xTaskCreatePinnedToCore(
+    TelemetryTask,
+    "TelemetryTask",
+    4096,
+    NULL,
+    2,
+    &hTelemetryTask,
+    1
+  );
 
-  Serial.println("INIT:ESP32-S3_SEISMOBENCH_V2.4_READY");
+  Serial.println("{\\"type\\":\\"STATUS\\",\\"state\\":\\"IDLE\\",\\"device\\":\\"ESP32-S3\\"}");
 }
 
+// --- MAIN PARSER LOOP (WEB SERIAL INTERFACE) ---
 void loop() {
-  // Process Incoming Serial Commands
   if (Serial.available()) {
-    String line = Serial.readStringUntil('\\n');
-    line.trim();
+    String input = Serial.readStringUntil('\\n');
+    input.trim();
 
-    if (line.startsWith("PING")) {
-      Serial.println("PONG:ESP32-S3_ONLINE [Dual TMC2209 + ADXL356]");
-    }
-    else if (line.startsWith("BUF_START:")) {
-      buffer_length = 0;
-      playback_idx = 0;
-      is_shaking = false;
-      Serial.println("OK:BUFFER_ALLOCATED");
-    }
-    else if (line.startsWith("CHUNK:")) {
-      // Format: CHUNK:startIndex:t_ms:step:disp;...
-      int firstColon = line.indexOf(':', 6);
-      String pointsData = line.substring(firstColon + 1);
-      
-      int startIdx = 0;
-      while (startIdx < pointsData.length()) {
-        int endIdx = pointsData.indexOf(';', startIdx);
-        if (endIdx == -1) endIdx = pointsData.length();
-        String pt = pointsData.substring(startIdx, endIdx);
-        int c1 = pt.indexOf(':');
-        int c2 = pt.indexOf(':', c1 + 1);
-        if (c1 != -1 && c2 != -1) {
-          int32_t stepVal = pt.substring(c1 + 1, c2).toInt();
-          if (buffer_length < MAX_BUFFER_POINTS) {
-            trajectory_buffer[buffer_length++] = stepVal;
-          }
-        }
-        startIdx = endIdx + 1;
+    StaticJsonDocument<256> doc;
+    DeserializationError err = deserializeJson(doc, input);
+
+    if (!err) {
+      const char* cmd = doc["cmd"];
+
+      if (strcmp(cmd, "PING") == 0) {
+        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"PONG\\"}");
+      } 
+      else if (strcmp(cmd, "HOME") == 0) {
+        currentStepPos = 0;
+        targetStepPos = 0;
+        isHomed = true;
+        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"HOMED\\"}");
       }
-      Serial.println("ACK:CHUNK_STORED");
-    }
-    else if (line.startsWith("EXEC:START")) {
-      playback_idx = 0;
-      is_shaking = true;
-      Serial.println("STATUS:SHAKING_ACTIVE");
-    }
-    else if (line.startsWith("ESTOP")) {
-      is_shaking = false;
-      estop_active = true;
-      digitalWrite(ENABLE_PIN, HIGH); // Disable stepper power
-      Serial.println("WARN:ESTOP_ASSERTED");
-    }
-    else if (line.startsWith("HOME")) {
-      Serial.println("OK:HOMING_CYCLE_COMPLETE");
-    }
-  }
-
-  // Stream Live Telemetry back to Web Serial during shaking
-  if (is_shaking && playback_idx < buffer_length) {
-    static uint32_t lastTlm = 0;
-    if (millis() - lastTlm >= 20) {
-      lastTlm = millis();
-      float accel_meas = readADXL356AccelG();
-      float pos_mm = current_step_pos / STEPS_PER_MM;
-      
-      // TLM:time_ms,accel_g,pos_mm,step_idx
-      Serial.printf("TLM:%lu,%.5f,%.2f,%ld\\n", millis(), accel_meas, pos_mm, current_step_pos);
+      else if (strcmp(cmd, "SHAKE") == 0) {
+        isRunning = true;
+        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"SHAKE_STARTED\\"}");
+      }
+      else if (strcmp(cmd, "ESTOP") == 0) {
+        isRunning = false;
+        digitalWrite(PIN_EN_L, HIGH); // Disable drivers
+        digitalWrite(PIN_EN_R, HIGH);
+        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"EMERGENCY_STOPPED\\"}");
+      }
     }
   }
 }
 `;
 
   const getActiveCode = () => {
-    if (activeTab === 'cpp_firmware') return esp32FirmwareCode;
-    if (activeTab === 'c_header') return cHeaderCode;
-    if (activeTab === 'json') return jsonPayload;
-    return '';
+    switch (activeTab) {
+      case 'json':
+        return jsonPayload;
+      case 'cpp_firmware':
+        return esp32FirmwareCode;
+      case 'c_header':
+        return cHeaderCode;
+      default:
+        return jsonPayload;
+    }
   };
 
   const handleCopy = () => {
@@ -286,20 +281,26 @@ void loop() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-4xl h-[680px] shadow-2xl flex flex-col overflow-hidden text-sm">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div 
+        className="w-full max-w-4xl h-[680px] rounded-3xl overflow-hidden backdrop-blur-3xl bg-white/95 dark:bg-[#161B22]/95 border border-black/10 dark:border-white/10 shadow-2xl flex flex-col text-sm"
+        onClick={e => e.stopPropagation()}
+      >
         
         {/* Header */}
-        <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800/60">
+        <div className="px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between bg-neutral-100/50 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
               <Cpu className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-white tracking-wide text-sm flex items-center gap-2">
+              <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight text-sm flex items-center gap-2">
                 ESP32-S3 Code & Trajectory Payload Generator
               </h3>
-              <p className="text-[11px] text-slate-400 font-mono">
+              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
                 Dual TMC2209 Steppers • ADXL356 Sensor • {trajectoryPoints.length} Trajectory Steps
               </p>
             </div>
@@ -308,15 +309,15 @@ void loop() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-200/60 dark:bg-white/[0.06] hover:bg-neutral-200 text-neutral-800 dark:text-neutral-200 border border-black/[0.06] dark:border-white/[0.08] rounded-xl text-xs font-semibold transition-all cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-neutral-400" />}
               <span>{copied ? 'Copied!' : 'Copy Code'}</span>
             </button>
 
             <button
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0071E3] dark:bg-[#0A84FF] hover:brightness-110 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download</span>
@@ -324,7 +325,7 @@ void loop() {
 
             <button
               onClick={onClose}
-              className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-xl hover:bg-neutral-200 dark:hover:bg-white/[0.08] text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -332,13 +333,13 @@ void loop() {
         </div>
 
         {/* Tab Selection */}
-        <div className="bg-slate-950/60 px-4 border-b border-slate-800 flex items-center gap-1 text-xs">
+        <div className="bg-neutral-100/60 dark:bg-white/[0.02] px-6 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center gap-1 text-xs">
           <button
             onClick={() => setActiveTab('cpp_firmware')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-3 font-medium border-b-2 transition-colors cursor-pointer ${
               activeTab === 'cpp_firmware'
-                ? 'border-cyan-400 text-cyan-300 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[#0071E3] dark:border-[#0A84FF] text-[#0071E3] dark:text-[#0A84FF] font-semibold'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <FileCode className="w-3.5 h-3.5" />
@@ -347,10 +348,10 @@ void loop() {
 
           <button
             onClick={() => setActiveTab('json')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-3 font-medium border-b-2 transition-colors cursor-pointer ${
               activeTab === 'json'
-                ? 'border-cyan-400 text-cyan-300 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[#0071E3] dark:border-[#0A84FF] text-[#0071E3] dark:text-[#0A84FF] font-semibold'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <FileJson className="w-3.5 h-3.5" />
@@ -359,10 +360,10 @@ void loop() {
 
           <button
             onClick={() => setActiveTab('c_header')}
-            className={`flex items-center gap-1.5 px-3.5 py-2.5 font-medium border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-3 font-medium border-b-2 transition-colors cursor-pointer ${
               activeTab === 'c_header'
-                ? 'border-cyan-400 text-cyan-300 font-semibold'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
+                ? 'border-[#0071E3] dark:border-[#0A84FF] text-[#0071E3] dark:text-[#0A84FF] font-semibold'
+                : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <Code className="w-3.5 h-3.5" />
@@ -371,8 +372,8 @@ void loop() {
         </div>
 
         {/* Code Content Display */}
-        <div className="flex-1 bg-slate-950 p-4 overflow-y-auto font-mono text-xs select-text">
-          <pre className="text-slate-300 leading-relaxed font-mono">
+        <div className="flex-1 bg-neutral-900 dark:bg-[#0B0E14] p-5 overflow-y-auto font-mono text-xs select-text">
+          <pre className="text-neutral-200 leading-relaxed font-mono">
             {getActiveCode()}
           </pre>
         </div>

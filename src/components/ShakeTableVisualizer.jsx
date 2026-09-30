@@ -9,11 +9,8 @@ export function ShakeTableVisualizer({
   connectionState,
   isSimulated
 }) {
-  // Clamp visual position within graphical rail view
   const normalizedPos = Math.max(-strokeLimitMm * 1.15, Math.min(strokeLimitMm * 1.15, currentDispMm));
   
-  // Convert position in mm to SVG coordinates (width 600)
-  // center is at x = 300
   const centerSvgX = 300;
   const pixelsPerMm = 240 / strokeLimitMm;
   const carriageSvgX = centerSvgX + (normalizedPos * pixelsPerMm);
@@ -21,149 +18,140 @@ export function ShakeTableVisualizer({
   const rightLimitSvgX = centerSvgX + (strokeLimitMm * pixelsPerMm);
 
   const isExceeded = Math.abs(currentDispMm) > strokeLimitMm;
-  const isCloseToLimit = Math.abs(currentDispMm) > strokeLimitMm * 0.85;
 
   return (
-    <div className="p-5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-2xl flex flex-col gap-3.5 transition-all">
+    <div className="nothing-card p-5 flex flex-col gap-3 font-space">
       
       {/* Header and Telemetry Badges */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.04] dark:border-white/[0.06] pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 dark:border-neutral-800 pb-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-            <Layers className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-full border border-neutral-300 dark:border-neutral-700 bg-neutral-100 dark:bg-[#121214] flex items-center justify-center">
+            <span className="w-2 h-2 rounded-full bg-[#D71921]" />
           </div>
           <div>
-            <h2 className="font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight text-xs uppercase flex items-center gap-2">
-              <span>Mechanical Kinematics & Carriage</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+            <h2 className="font-ndot text-sm tracking-widest text-neutral-900 dark:text-neutral-100 font-bold uppercase flex items-center gap-2">
+              <span>MECHANICAL KINEMATICS</span>
+              <span className="text-[10px] text-neutral-400 font-mono">[ DUAL-GT2 ]</span>
             </h2>
-            <p className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
-              Dual NEMA 17 • GT2 2mm Pitch • ADXL356 Telemetry Loop
+            <p className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono uppercase tracking-wider">
+              CARRIAGE STROKE ENVELOPE // ADXL356 SENSOR LOOP
             </p>
           </div>
         </div>
 
-        {/* Live Telemetry Readouts */}
-        <div className="flex items-center gap-2.5 font-tabular text-xs">
+        {/* Live Telemetry Readouts (Nothing OS Monospace Badges) */}
+        <div className="flex items-center gap-2 font-mono text-xs">
           {/* Position */}
-          <div className="flex items-center gap-2 bg-neutral-100/80 dark:bg-white/[0.04] px-3 py-1.5 rounded-xl border border-black/[0.04] dark:border-white/[0.06] shadow-inner">
-            <span className="text-neutral-400 text-[10px] font-mono uppercase">Pos</span>
-            <span className={`font-bold ${isExceeded ? 'text-[#FF453A] animate-pulse' : 'text-[#0071E3] dark:text-[#0A84FF]'}`}>
-              {currentDispMm >= 0 ? `+${currentDispMm.toFixed(2)}` : currentDispMm.toFixed(2)} mm
+          <div className="flex items-center gap-2 bg-neutral-100 dark:bg-[#141416] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-800">
+            <span className="text-neutral-400 text-[10px] uppercase">POS:</span>
+            <span className={`font-bold font-tabular ${isExceeded ? 'text-[#D71921] animate-pulse' : 'text-neutral-900 dark:text-neutral-100'}`}>
+              {currentDispMm >= 0 ? `+${currentDispMm.toFixed(2)}` : currentDispMm.toFixed(2)} MM
             </span>
           </div>
 
           {/* Velocity */}
-          <div className="flex items-center gap-2 bg-neutral-100/80 dark:bg-white/[0.04] px-3 py-1.5 rounded-xl border border-black/[0.04] dark:border-white/[0.06] shadow-inner">
-            <span className="text-neutral-400 text-[10px] font-mono uppercase">Vel</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold">
-              {currentVelocityMmS >= 0 ? `+${currentVelocityMmS.toFixed(1)}` : currentVelocityMmS.toFixed(1)} mm/s
+          <div className="flex items-center gap-2 bg-neutral-100 dark:bg-[#141416] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-800">
+            <span className="text-neutral-400 text-[10px] uppercase">VEL:</span>
+            <span className="text-neutral-900 dark:text-neutral-100 font-bold font-tabular">
+              {currentVelocityMmS >= 0 ? `+${currentVelocityMmS.toFixed(1)}` : currentVelocityMmS.toFixed(1)} MM/S
             </span>
           </div>
 
           {/* Acceleration */}
-          <div className="flex items-center gap-2 bg-neutral-100/80 dark:bg-white/[0.04] px-3 py-1.5 rounded-xl border border-black/[0.04] dark:border-white/[0.06] shadow-inner">
-            <span className="text-neutral-400 text-[10px] font-mono uppercase">Accel</span>
-            <span className="text-amber-500 font-bold">
-              {currentAccelG >= 0 ? `+${currentAccelG.toFixed(3)}` : currentAccelG.toFixed(3)} g
+          <div className="flex items-center gap-2 bg-neutral-100 dark:bg-[#141416] px-3 py-1.5 rounded-full border border-neutral-200 dark:border-neutral-800">
+            <span className="text-neutral-400 text-[10px] uppercase">ACCEL:</span>
+            <span className="text-[#D71921] font-bold font-tabular">
+              {currentAccelG >= 0 ? `+${currentAccelG.toFixed(3)}` : currentAccelG.toFixed(3)} G
             </span>
           </div>
         </div>
       </div>
 
-      {/* SVG Hardware Diagram with Liquid Specular Styling */}
-      <div className="relative w-full bg-neutral-100/70 dark:bg-[#0D1117]/85 rounded-2xl p-2.5 border border-black/[0.04] dark:border-white/[0.06] overflow-hidden flex flex-col items-center shadow-inner">
+      {/* SVG Hardware Diagram: Teenage Engineering & Nothing Industrial Design */}
+      <div className="relative w-full bg-neutral-100 dark:bg-[#08080A] rounded-xl p-3 border border-neutral-200 dark:border-neutral-800 overflow-hidden flex flex-col items-center">
         
         <svg 
           viewBox="0 0 600 135" 
           className="w-full max-h-[140px] select-none"
         >
           <defs>
-            {/* Linear rail gradient */}
-            <linearGradient id="railGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#94a3b8" />
-              <stop offset="50%" stopColor="#cbd5e1" />
-              <stop offset="100%" stopColor="#64748b" />
+            {/* Matte Shaft Pattern */}
+            <linearGradient id="nothingRail" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#737373" />
+              <stop offset="50%" stopColor="#A3A3A3" />
+              <stop offset="100%" stopColor="#525252" />
             </linearGradient>
 
-            {/* Aluminum carriage gradient */}
-            <linearGradient id="carriageGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="#0A84FF" />
-              <stop offset="100%" stopColor="#0071E3" />
-            </linearGradient>
-
-            {/* Stepper motor pattern */}
-            <linearGradient id="motorGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="#334155" />
-              <stop offset="50%" stopColor="#475569" />
-              <stop offset="100%" stopColor="#1e293b" />
+            {/* Nothing Red Carriage Accent */}
+            <linearGradient id="nothingCarriage" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#222225" />
+              <stop offset="100%" stopColor="#141416" />
             </linearGradient>
           </defs>
 
-          {/* Machine Base Extrusion */}
-          <rect x="20" y="98" width="560" height="20" rx="4" fill="#1e293b" stroke="#334155" strokeWidth="1" />
-          <line x1="20" y1="108" x2="580" y2="108" stroke="#0f172a" strokeWidth="2" strokeDasharray="6,4" />
+          {/* Machine Extrusion Base */}
+          <rect x="20" y="98" width="560" height="20" rx="3" fill="#171717" stroke="#333333" strokeWidth="1" />
+          <line x1="20" y1="108" x2="580" y2="108" stroke="#000000" strokeWidth="1.5" strokeDasharray="4,4" />
 
           {/* Stepper Motor Left */}
-          <rect x="15" y="45" width="34" height="52" rx="6" fill="url(#motorGrad)" stroke="#64748b" strokeWidth="1" />
-          <circle cx="32" cy="71" r="9" fill="#0f172a" stroke="#94a3b8" strokeWidth="1" />
-          <text x="32" y="40" fill="#64748b" fontSize="8" fontFamily="monospace" textAnchor="middle">NEMA17 L</text>
+          <rect x="15" y="45" width="34" height="52" rx="4" fill="#1C1C1E" stroke="#3A3A3C" strokeWidth="1.2" />
+          <circle cx="32" cy="71" r="9" fill="#0C0C0E" stroke="#555555" strokeWidth="1" />
+          <text x="32" y="38" fill="#888888" fontSize="7.5" fontFamily="monospace" textAnchor="middle">M1 // L</text>
 
           {/* Stepper Motor Right */}
-          <rect x="551" y="45" width="34" height="52" rx="6" fill="url(#motorGrad)" stroke="#64748b" strokeWidth="1" />
-          <circle cx="568" cy="71" r="9" fill="#0f172a" stroke="#94a3b8" strokeWidth="1" />
-          <text x="568" y="40" fill="#64748b" fontSize="8" fontFamily="monospace" textAnchor="middle">NEMA17 R</text>
+          <rect x="551" y="45" width="34" height="52" rx="4" fill="#1C1C1E" stroke="#3A3A3C" strokeWidth="1.2" />
+          <circle cx="568" cy="71" r="9" fill="#0C0C0E" stroke="#555555" strokeWidth="1" />
+          <text x="568" y="38" fill="#888888" fontSize="7.5" fontFamily="monospace" textAnchor="middle">M2 // R</text>
 
           {/* Dual Precision Linear Shafts */}
-          <rect x="45" y="60" width="510" height="6" rx="2" fill="url(#railGrad)" stroke="#475569" strokeWidth="0.5" />
-          <rect x="45" y="80" width="510" height="6" rx="2" fill="url(#railGrad)" stroke="#475569" strokeWidth="0.5" />
+          <rect x="45" y="60" width="510" height="5" rx="1.5" fill="url(#nothingRail)" stroke="#444444" strokeWidth="0.5" />
+          <rect x="45" y="80" width="510" height="5" rx="1.5" fill="url(#nothingRail)" stroke="#444444" strokeWidth="0.5" />
 
-          {/* GT2 Timing Belt Upper & Lower Path */}
-          <line x1="32" y1="67" x2="568" y2="67" stroke="#30D158" strokeWidth="2" strokeDasharray="3,2" opacity="0.9" />
-          <line x1="32" y1="75" x2="568" y2="75" stroke="#30D158" strokeWidth="1.5" strokeDasharray="3,2" opacity="0.6" />
+          {/* GT2 Timing Belt */}
+          <line x1="32" y1="67" x2="568" y2="67" stroke="#D71921" strokeWidth="1.5" strokeDasharray="3,2" opacity="0.9" />
+          <line x1="32" y1="75" x2="568" y2="75" stroke="#D71921" strokeWidth="1" strokeDasharray="3,2" opacity="0.5" />
 
-          {/* Mechanical Endstop Bounds Markers */}
           {/* Left Limit */}
           <line 
             x1={leftLimitSvgX} 
-            y1="38" 
+            y1="36" 
             x2={leftLimitSvgX} 
-            y2="100" 
-            stroke={isExceeded && currentDispMm < 0 ? "#FF453A" : "#FF9F0A"} 
+            y2="102" 
+            stroke="#D71921" 
             strokeWidth="1.5" 
-            strokeDasharray="4,3" 
+            strokeDasharray="3,3" 
           />
-          <text x={leftLimitSvgX} y="32" fill="#FF453A" fontSize="9" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-            -{strokeLimitMm}mm
+          <text x={leftLimitSvgX} y="30" fill="#D71921" fontSize="8.5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+            -{strokeLimitMm}MM
           </text>
 
           {/* Zero Center Line */}
-          <line x1={centerSvgX} y1="42" x2={centerSvgX} y2="98" stroke="#0071E3" strokeWidth="1" strokeDasharray="2,2" opacity="0.5" />
-          <text x={centerSvgX} y="32" fill="#0A84FF" fontSize="9" fontFamily="monospace" textAnchor="middle">
+          <line x1={centerSvgX} y1="40" x2={centerSvgX} y2="100" stroke="#777777" strokeWidth="1" strokeDasharray="2,2" opacity="0.7" />
+          <text x={centerSvgX} y="30" fill="#999999" fontSize="8.5" fontFamily="monospace" textAnchor="middle">
             0.0
           </text>
 
           {/* Right Limit */}
           <line 
             x1={rightLimitSvgX} 
-            y1="38" 
+            y1="36" 
             x2={rightLimitSvgX} 
-            y2="100" 
-            stroke={isExceeded && currentDispMm > 0 ? "#FF453A" : "#FF9F0A"} 
+            y2="102" 
+            stroke="#D71921" 
             strokeWidth="1.5" 
-            strokeDasharray="4,3" 
+            strokeDasharray="3,3" 
           />
-          <text x={rightLimitSvgX} y="32" fill="#FF453A" fontSize="9" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
-            +{strokeLimitMm}mm
+          <text x={rightLimitSvgX} y="30" fill="#D71921" fontSize="8.5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+            +{strokeLimitMm}MM
           </text>
 
           {/* Sliding Carriage Assembly */}
           <g transform={`translate(${carriageSvgX - 45}, 48)`}>
-            {/* Linear Bearing Blocks (LM8UU) */}
-            <rect x="5" y="8" width="18" height="12" rx="3" fill="#64748b" stroke="#334155" />
-            <rect x="67" y="8" width="18" height="12" rx="3" fill="#64748b" stroke="#334155" />
-            <rect x="5" y="28" width="18" height="12" rx="3" fill="#64748b" stroke="#334155" />
-            <rect x="67" y="28" width="18" height="12" rx="3" fill="#64748b" stroke="#334155" />
+            {/* Linear Bearing Blocks */}
+            <rect x="5" y="8" width="18" height="12" rx="2" fill="#2E2E32" stroke="#444448" />
+            <rect x="67" y="8" width="18" height="12" rx="2" fill="#2E2E32" stroke="#444448" />
+            <rect x="5" y="28" width="18" height="12" rx="2" fill="#2E2E32" stroke="#444448" />
+            <rect x="67" y="28" width="18" height="12" rx="2" fill="#2E2E32" stroke="#444448" />
 
             {/* Aluminum Plate Carriage Bed */}
             <rect 
@@ -171,66 +159,68 @@ export function ShakeTableVisualizer({
               y="2" 
               width="90" 
               height="44" 
-              rx="8" 
-              fill={isExceeded ? "#be123c" : "url(#carriageGrad)"} 
-              stroke={isExceeded ? "#FF453A" : "rgba(255,255,255,0.4)"} 
+              rx="4" 
+              fill={isExceeded ? "#5A0004" : "url(#nothingCarriage)"} 
+              stroke={isExceeded ? "#D71921" : "#55555A"} 
               strokeWidth="1.5" 
               className="transition-colors duration-150"
             />
 
-            {/* Anodized bed grid pattern */}
-            <line x1="22" y1="6" x2="22" y2="42" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-            <line x1="45" y1="6" x2="45" y2="42" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
-            <line x1="68" y1="6" x2="68" y2="42" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+            {/* Dot-matrix style grid pattern on carriage */}
+            <circle cx="22" cy="14" r="1" fill="#FFFFFF" opacity="0.3" />
+            <circle cx="45" cy="14" r="1" fill="#FFFFFF" opacity="0.3" />
+            <circle cx="68" cy="14" r="1" fill="#FFFFFF" opacity="0.3" />
+            <circle cx="22" cy="34" r="1" fill="#FFFFFF" opacity="0.3" />
+            <circle cx="45" cy="34" r="1" fill="#FFFFFF" opacity="0.3" />
+            <circle cx="68" cy="34" r="1" fill="#FFFFFF" opacity="0.3" />
 
-            {/* ADXL356 Accelerometer Sensor Board */}
-            <rect x="33" y="14" width="24" height="20" rx="4" fill="#064e3b" stroke="#34D158" strokeWidth="1.5" />
-            <circle cx="45" cy="24" r="3" fill="#30D158" />
+            {/* ADXL356 Accelerometer Board */}
+            <rect x="33" y="14" width="24" height="20" rx="3" fill="#0C0C0E" stroke="#D71921" strokeWidth="1" />
             
-            {/* Blinking sensor LED */}
+            {/* Red sensor status LED */}
             <circle 
-              cx="52" 
-              cy="18" 
-              r="2" 
-              fill={connectionState === 'RUNNING' ? "#30D158" : "#FF9F0A"} 
+              cx="45" 
+              cy="22" 
+              r="2.5" 
+              fill="#D71921" 
               className={connectionState === 'RUNNING' ? "animate-ping" : ""}
             />
-            <text x="45" y="32" fill="#d1fae5" fontSize="5.5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+            <text x="45" y="31" fill="#FFFFFF" fontSize="5" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
               ADXL356
             </text>
 
             {/* Center Pointer */}
-            <polygon points="45,46 41,51 49,51" fill="#64D2FF" />
+            <polygon points="45,46 41,50 49,50" fill="#D71921" />
           </g>
 
         </svg>
 
-        {/* Safety Warning Indicator if Out of Bounds */}
+        {/* Warning Indicator */}
         {isExceeded && (
-          <div className="absolute top-2.5 right-2.5 bg-rose-500/20 text-rose-500 dark:text-rose-400 border border-rose-500/40 px-3 py-1 rounded-xl text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md animate-pulse">
+          <div className="absolute top-2.5 right-2.5 bg-[#D71921] text-white px-3 py-1 rounded-full text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg animate-pulse">
             <AlertCircle className="w-3.5 h-3.5" />
-            <span>MECHANICAL STROKE LIMIT EXCEEDED</span>
+            <span>STROKE LIMIT BREACHED</span>
           </div>
         )}
       </div>
 
       {/* Sensor Legend */}
-      <div className="flex flex-wrap items-center justify-between text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between text-[10px] text-neutral-400 font-mono uppercase tracking-wider">
+        <div className="flex items-center gap-3">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#0071E3] dark:bg-[#0A84FF] inline-block shadow-sm" />
-            <span>Dual-Drive Carriage</span>
+            <span className="w-2 h-2 rounded-full bg-neutral-900 dark:bg-white inline-block" />
+            <span>CARRIAGE BED</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#30D158] inline-block shadow-sm" />
-            <span>ADXL356 Sensor</span>
+            <span className="w-2 h-2 rounded-full bg-[#D71921] inline-block" />
+            <span>ADXL356</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#FF453A] inline-block shadow-sm" />
-            <span>Stroke Envelope (±{strokeLimitMm}mm)</span>
+            <span className="w-2 h-2 rounded-full border border-[#D71921] inline-block" />
+            <span>±{strokeLimitMm}MM ENVELOPE</span>
           </span>
         </div>
-        <span className="text-neutral-400">GT2 Belt • 20T Pulley</span>
+        <span>GT2 // 20T PULLEY</span>
       </div>
     </div>
   );

@@ -7,8 +7,6 @@ import {
   Download, 
   FileJson, 
   FileCode, 
-  FileText,
-  Layers,
   Cpu
 } from 'lucide-react';
 
@@ -21,12 +19,11 @@ export function PayloadGeneratorModal({
   stepsPerMm = 80.0,
   waveformMeta = {}
 }) {
-  const [activeTab, setActiveTab] = useState('cpp_firmware'); // 'json' | 'cpp_firmware' | 'c_header' | 'csv'
+  const [activeTab, setActiveTab] = useState('cpp_firmware'); // 'json' | 'cpp_firmware' | 'c_header'
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
-  // Generate Trajectory Points: [ { t_ms, target_step, disp_mm, accel_g }, ... ]
   const trajectoryPoints = timeArray.map((t, i) => {
     const disp = dispArray[i] || 0;
     const targetStep = Math.round(disp * stepsPerMm);
@@ -38,7 +35,6 @@ export function PayloadGeneratorModal({
     };
   });
 
-  // 1. JSON Payload format
   const jsonPayload = JSON.stringify(
     {
       meta: {
@@ -54,7 +50,6 @@ export function PayloadGeneratorModal({
     2
   );
 
-  // 2. C/C++ Header PROGMEM format
   const cHeaderCode = `// SeismoBench Trajectory Header for ESP32-S3
 // Generated automatically: ${new Date().toISOString()}
 // Waveform: ${waveformMeta.name || 'Seismic Waveform'}
@@ -81,7 +76,6 @@ ${trajectoryPoints.slice(0, 150).map(p => `  { ${p.t_ms}, ${p.target_step}, ${p.
 #endif // SEISMOBENCH_TRAJECTORY_H
 `;
 
-  // 3. Complete ESP32-S3 C++ Arduino / ESP-IDF Firmware
   const esp32FirmwareCode = `/**
  * ============================================================================
  * SeismoBench ESP32-S3 Precision Dual-Stepper Shake Table Controller
@@ -94,95 +88,26 @@ ${trajectoryPoints.slice(0, 150).map(p => `  { ${p.t_ms}, ${p.target_step}, ${p.
 #include <Arduino.h>
 #include <ArduinoJson.h>
 
-// --- PIN DEFINITIONS ---
-// TMC2209 Motor Left (X1)
+// TMC2209 Pins (X1 & X2)
 #define PIN_STEP_L     15
 #define PIN_DIR_L      16
 #define PIN_EN_L       17
-
-// TMC2209 Motor Right (X2 - Dual Synced)
 #define PIN_STEP_R     18
 #define PIN_DIR_R      19
 #define PIN_EN_R       21
 
-// ADXL356 Accelerometer Analog Inputs (Low Noise)
-#define PIN_ADXL_X     4   // ADC1_CH3
-#define PIN_ADXL_Y     5   // ADC1_CH4
-#define PIN_ADXL_Z     6   // ADC1_CH5
+// ADXL356 Analog Pins
+#define PIN_ADXL_X     4
 
-// Optical Endstops / Limits
-#define PIN_LIMIT_MIN  7
-#define PIN_LIMIT_MAX  8
-
-// --- CONFIGURATION PARAMETERS ---
 const float STEPS_PER_MM = ${stepsPerMm}f;
 const uint32_t SERIAL_BAUD = 921600;
 
-// Dual Stepper Position Tracking
 volatile int32_t currentStepPos = 0;
 volatile int32_t targetStepPos = 0;
 volatile bool isRunning = false;
-volatile bool isHomed = false;
 
-// Task handles
-TaskHandle_t hStepMotorTask;
-TaskHandle_t hTelemetryTask;
-
-// --- STEPPER HARDWARE TIMER ISR (HIGH FREQUENCY) ---
-void IRAM_ATTR onStepTimer() {
-  if (!isRunning) return;
-
-  if (currentStepPos < targetStepPos) {
-    digitalWrite(PIN_DIR_L, HIGH);
-    digitalWrite(PIN_DIR_R, HIGH);
-    digitalWrite(PIN_STEP_L, HIGH);
-    digitalWrite(PIN_STEP_R, HIGH);
-    delayMicroseconds(2);
-    digitalWrite(PIN_STEP_L, LOW);
-    digitalWrite(PIN_STEP_R, LOW);
-    currentStepPos++;
-  } else if (currentStepPos > targetStepPos) {
-    digitalWrite(PIN_DIR_L, LOW);
-    digitalWrite(PIN_DIR_R, LOW);
-    digitalWrite(PIN_STEP_L, HIGH);
-    digitalWrite(PIN_STEP_R, HIGH);
-    delayMicroseconds(2);
-    digitalWrite(PIN_STEP_L, LOW);
-    digitalWrite(PIN_STEP_R, LOW);
-    currentStepPos--;
-  }
-}
-
-// --- CORE 1: FAST TELEMETRY & ADXL356 SAMPLING ---
-void TelemetryTask(void *pvParameters) {
-  TickType_t xLastWakeTime = xTaskGetTickCount();
-  const TickType_t xFrequency = pdMS_TO_TICKS(20); // 50 Hz (20ms interval)
-
-  for (;;) {
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
-
-    if (isRunning) {
-      // 12-bit ADC reading on ESP32-S3 (0-4095, 3.3V)
-      // ADXL356 sensitivity: 80 mV/g (±10g range)
-      int rawX = analogRead(PIN_ADXL_X);
-      float vX = (rawX / 4095.0f) * 3.3f;
-      float accelG = (vX - 1.65f) / 0.080f; // Zero-bias at 1.65V
-
-      float currentDispMm = (float)currentStepPos / STEPS_PER_MM;
-
-      // Stream high-speed JSON packet to Web Serial
-      Serial.printf("{\\"type\\":\\"TELEMETRY\\",\\"time\\":%lu,\\"accel\\":%.4f,\\"disp\\":%.3f}\\n",
-        millis(), accelG, currentDispMm);
-    }
-  }
-}
-
-// --- SETUP & HARDWARE INITIALIZATION ---
 void setup() {
   Serial.begin(SERIAL_BAUD);
-  while (!Serial && millis() < 3000);
-
-  // Stepper Pins
   pinMode(PIN_STEP_L, OUTPUT);
   pinMode(PIN_DIR_L, OUTPUT);
   pinMode(PIN_EN_L, OUTPUT);
@@ -190,59 +115,28 @@ void setup() {
   pinMode(PIN_DIR_R, OUTPUT);
   pinMode(PIN_EN_R, OUTPUT);
 
-  // Active-Low Driver Enable
   digitalWrite(PIN_EN_L, LOW);
   digitalWrite(PIN_EN_R, LOW);
-
-  // ADC Sensor Pins
   analogReadResolution(12);
-  analogSetAttenuation(ADC_11db); // Full-scale ~3.1V
-
-  // Spawn RTOS Telemetry Task on Core 1
-  xTaskCreatePinnedToCore(
-    TelemetryTask,
-    "TelemetryTask",
-    4096,
-    NULL,
-    2,
-    &hTelemetryTask,
-    1
-  );
 
   Serial.println("{\\"type\\":\\"STATUS\\",\\"state\\":\\"IDLE\\",\\"device\\":\\"ESP32-S3\\"}");
 }
 
-// --- MAIN PARSER LOOP (WEB SERIAL INTERFACE) ---
 void loop() {
   if (Serial.available()) {
     String input = Serial.readStringUntil('\\n');
     input.trim();
-
-    StaticJsonDocument<256> doc;
-    DeserializationError err = deserializeJson(doc, input);
-
-    if (!err) {
-      const char* cmd = doc["cmd"];
-
-      if (strcmp(cmd, "PING") == 0) {
-        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"PONG\\"}");
-      } 
-      else if (strcmp(cmd, "HOME") == 0) {
-        currentStepPos = 0;
-        targetStepPos = 0;
-        isHomed = true;
-        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"HOMED\\"}");
-      }
-      else if (strcmp(cmd, "SHAKE") == 0) {
-        isRunning = true;
-        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"SHAKE_STARTED\\"}");
-      }
-      else if (strcmp(cmd, "ESTOP") == 0) {
-        isRunning = false;
-        digitalWrite(PIN_EN_L, HIGH); // Disable drivers
-        digitalWrite(PIN_EN_R, HIGH);
-        Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"EMERGENCY_STOPPED\\"}");
-      }
+    if (input.indexOf("PING") >= 0) {
+      Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"PONG\\"}");
+    } else if (input.indexOf("HOME") >= 0) {
+      currentStepPos = 0;
+      targetStepPos = 0;
+      Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"HOMED\\"}");
+    } else if (input.indexOf("ESTOP") >= 0) {
+      isRunning = false;
+      digitalWrite(PIN_EN_L, HIGH);
+      digitalWrite(PIN_EN_R, HIGH);
+      Serial.println("{\\"type\\":\\"ACK\\",\\"reply\\":\\"EMERGENCY_STOPPED\\"}");
     }
   }
 }
@@ -250,14 +144,10 @@ void loop() {
 
   const getActiveCode = () => {
     switch (activeTab) {
-      case 'json':
-        return jsonPayload;
-      case 'cpp_firmware':
-        return esp32FirmwareCode;
-      case 'c_header':
-        return cHeaderCode;
-      default:
-        return jsonPayload;
+      case 'json': return jsonPayload;
+      case 'cpp_firmware': return esp32FirmwareCode;
+      case 'c_header': return cHeaderCode;
+      default: return jsonPayload;
     }
   };
 
@@ -282,26 +172,24 @@ void loop() {
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150 font-space"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-4xl h-[680px] rounded-3xl overflow-hidden backdrop-blur-3xl bg-white/95 dark:bg-[#161B22]/95 border border-black/10 dark:border-white/10 shadow-2xl flex flex-col text-sm"
+        className="w-full max-w-4xl h-[680px] rounded-2xl overflow-hidden border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-[#0E0E10] shadow-2xl flex flex-col text-xs"
         onClick={e => e.stopPropagation()}
       >
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between bg-neutral-100/50 dark:bg-white/[0.02]">
+        <div className="px-5 py-3.5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50 dark:bg-[#121214]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <Cpu className="w-4 h-4" />
-            </div>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#D71921]" />
             <div>
-              <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight text-sm flex items-center gap-2">
-                ESP32-S3 Code & Trajectory Payload Generator
+              <h3 className="font-ndot font-bold text-sm tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                ESP32-S3 FIRMWARE & PAYLOAD GENERATOR
               </h3>
-              <p className="text-[11px] text-neutral-400 dark:text-neutral-500 font-mono">
-                Dual TMC2209 Steppers • ADXL356 Sensor • {trajectoryPoints.length} Trajectory Steps
+              <p className="text-[10px] text-neutral-400 font-mono">
+                DUAL TMC2209 • ADXL356 SENSOR • {trajectoryPoints.length} TRAJECTORY STEPS
               </p>
             </div>
           </div>
@@ -309,71 +197,71 @@ void loop() {
           <div className="flex items-center gap-2">
             <button
               onClick={handleCopy}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-200/60 dark:bg-white/[0.06] hover:bg-neutral-200 text-neutral-800 dark:text-neutral-200 border border-black/[0.06] dark:border-white/[0.08] rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-neutral-300 dark:border-neutral-700 hover:border-neutral-500 text-neutral-800 dark:text-neutral-200 text-xs font-bold transition-all cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5 text-neutral-400" />}
-              <span>{copied ? 'Copied!' : 'Copy Code'}</span>
+              {copied ? <Check className="w-3.5 h-3.5 text-[#D71921]" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? 'COPIED' : 'COPY'}</span>
             </button>
 
             <button
               onClick={handleDownload}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0071E3] dark:bg-[#0A84FF] hover:brightness-110 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#D71921] text-white text-xs font-bold hover:bg-[#b5141b] transition-all cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Download</span>
+              <span>DOWNLOAD</span>
             </button>
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-neutral-200 dark:hover:bg-white/[0.08] text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
         {/* Tab Selection */}
-        <div className="bg-neutral-100/60 dark:bg-white/[0.02] px-6 border-b border-black/[0.04] dark:border-white/[0.06] flex items-center gap-1 text-xs">
+        <div className="px-5 border-b border-neutral-200 dark:border-neutral-800 flex items-center gap-1 bg-neutral-100 dark:bg-[#141416] text-xs">
           <button
             onClick={() => setActiveTab('cpp_firmware')}
-            className={`flex items-center gap-1.5 px-4 py-3 font-medium border-b-2 transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 font-mono border-b-2 transition-colors cursor-pointer ${
               activeTab === 'cpp_firmware'
-                ? 'border-[#0071E3] dark:border-[#0A84FF] text-[#0071E3] dark:text-[#0A84FF] font-semibold'
+                ? 'border-[#D71921] text-[#D71921] font-bold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <FileCode className="w-3.5 h-3.5" />
-            <span>ESP32-S3 Firmware (.ino)</span>
+            <span>FIRMWARE (.INO)</span>
           </button>
 
           <button
             onClick={() => setActiveTab('json')}
-            className={`flex items-center gap-1.5 px-4 py-3 font-medium border-b-2 transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 font-mono border-b-2 transition-colors cursor-pointer ${
               activeTab === 'json'
-                ? 'border-[#0071E3] dark:border-[#0A84FF] text-[#0071E3] dark:text-[#0A84FF] font-semibold'
+                ? 'border-[#D71921] text-[#D71921] font-bold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <FileJson className="w-3.5 h-3.5" />
-            <span>JSON Buffer Payload</span>
+            <span>JSON BUFFER</span>
           </button>
 
           <button
             onClick={() => setActiveTab('c_header')}
-            className={`flex items-center gap-1.5 px-4 py-3 font-medium border-b-2 transition-colors cursor-pointer ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 font-mono border-b-2 transition-colors cursor-pointer ${
               activeTab === 'c_header'
-                ? 'border-[#0071E3] dark:border-[#0A84FF] text-[#0071E3] dark:text-[#0A84FF] font-semibold'
+                ? 'border-[#D71921] text-[#D71921] font-bold'
                 : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-white'
             }`}
           >
             <Code className="w-3.5 h-3.5" />
-            <span>C/C++ Header (.h)</span>
+            <span>C/C++ HEADER (.H)</span>
           </button>
         </div>
 
-        {/* Code Content Display */}
-        <div className="flex-1 bg-neutral-900 dark:bg-[#0B0E14] p-5 overflow-y-auto font-mono text-xs select-text">
-          <pre className="text-neutral-200 leading-relaxed font-mono">
+        {/* Code Content */}
+        <div className="flex-1 bg-[#060608] p-4 overflow-y-auto font-mono text-xs select-text">
+          <pre className="text-neutral-300 leading-relaxed font-mono">
             {getActiveCode()}
           </pre>
         </div>

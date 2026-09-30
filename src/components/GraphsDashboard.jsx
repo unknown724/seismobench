@@ -4,12 +4,8 @@ import {
   Activity, 
   BarChart2, 
   TrendingUp, 
-  Layers, 
-  Compass, 
   CheckCircle, 
-  Sparkles,
-  Sliders,
-  Clock
+  Sliders
 } from 'lucide-react';
 
 export function GraphsDashboard({
@@ -33,27 +29,27 @@ export function GraphsDashboard({
   const [showVelocity, setShowVelocity] = useState(false);
   const isDark = theme === 'dark';
 
-  // Common Apple HIG Engineering Theme Plotly Layout
+  // Nothing OS Plotly Layout (Monochrome + Nothing Red Accent)
   const baseLayout = useMemo(() => ({
     paper_bgcolor: 'transparent',
-    plot_bgcolor: isDark ? 'rgba(13, 17, 23, 0.45)' : 'rgba(255, 255, 255, 0.55)',
-    margin: { l: 45, r: 20, t: 28, b: 34 },
+    plot_bgcolor: isDark ? '#0A0A0C' : '#F9F9FB',
+    margin: { l: 45, r: 20, t: 30, b: 35 },
     font: { 
-      family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif', 
-      color: isDark ? '#94A3B8' : '#64748B', 
-      size: 10 
+      family: '"Space Mono", monospace', 
+      color: isDark ? '#888888' : '#555555', 
+      size: 9.5 
     },
     xaxis: {
-      gridcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-      zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+      gridcolor: isDark ? '#1C1C20' : '#E5E5E7',
+      zerolinecolor: isDark ? '#333338' : '#CCCCCC',
       showgrid: true,
-      tickfont: { size: 9, color: isDark ? '#64748B' : '#94A3B8' }
+      tickfont: { size: 9, color: isDark ? '#777777' : '#888888' }
     },
     yaxis: {
-      gridcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-      zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+      gridcolor: isDark ? '#1C1C20' : '#E5E5E7',
+      zerolinecolor: isDark ? '#333338' : '#CCCCCC',
       showgrid: true,
-      tickfont: { size: 9, color: isDark ? '#64748B' : '#94A3B8' }
+      tickfont: { size: 9, color: isDark ? '#777777' : '#888888' }
     },
     showlegend: true,
     legend: {
@@ -61,9 +57,9 @@ export function GraphsDashboard({
       xanchor: 'right',
       y: 1.15,
       orientation: 'h',
-      font: { size: 10, color: isDark ? '#E2E8F0' : '#334155' },
-      bgcolor: isDark ? 'rgba(22, 27, 34, 0.85)' : 'rgba(255, 255, 255, 0.85)',
-      bordercolor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+      font: { size: 9, color: isDark ? '#EEEEEE' : '#222222' },
+      bgcolor: isDark ? 'rgba(14, 14, 16, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+      bordercolor: isDark ? '#2A2A2E' : '#E0E0E0',
       borderwidth: 1
     },
     autosize: true
@@ -83,7 +79,6 @@ export function GraphsDashboard({
     }
   };
 
-  // Safe wrapper for Plotly.react
   const safePlotlyReact = (element, data, layout, config) => {
     if (!element) return;
     try {
@@ -107,8 +102,8 @@ export function GraphsDashboard({
         y: accelArray,
         type: 'scatter',
         mode: 'lines',
-        name: 'Ground Accel (g)',
-        line: { color: isDark ? '#0A84FF' : '#0071E3', width: 1.6 }
+        name: 'a(t) [G]',
+        line: { color: isDark ? '#FFFFFF' : '#111111', width: 1.5 }
       }
     ];
 
@@ -121,20 +116,20 @@ export function GraphsDashboard({
         x1: currentTime,
         y0: 0,
         y1: 1,
-        line: { color: '#FF9F0A', width: 1.5, dash: 'dot' }
+        line: { color: '#D71921', width: 1.5, dash: 'dot' }
       }
     ];
 
     const layout = {
       ...baseLayout,
       title: {
-        text: '1. Ground Acceleration Input a(t)',
-        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
+        text: '01 // GROUND ACCELERATION INPUT a(t)',
+        font: { size: 10, color: isDark ? '#FFFFFF' : '#111111', family: '"Space Mono", monospace' },
         x: 0.02,
         y: 0.95
       },
-      xaxis: { ...baseLayout.xaxis, title: { text: 'Time (s)', font: { size: 10 } } },
-      yaxis: { ...baseLayout.yaxis, title: { text: 'Acceleration (g)', font: { size: 10 } } },
+      xaxis: { ...baseLayout.xaxis, title: { text: 'TIME (S)', font: { size: 9 } } },
+      yaxis: { ...baseLayout.yaxis, title: { text: 'ACCEL (G)', font: { size: 9 } } },
       shapes
     };
 
@@ -155,8 +150,8 @@ export function GraphsDashboard({
         y: dispArray,
         type: 'scatter',
         mode: 'lines',
-        name: 'Table Disp x(t) [mm]',
-        line: { color: isDark ? '#30B0C7' : '#0071E3', width: 2 }
+        name: 'x(t) [MM]',
+        line: { color: '#D71921', width: 1.8 }
       }
     ];
 
@@ -166,9 +161,9 @@ export function GraphsDashboard({
         y: velocityArray,
         type: 'scatter',
         mode: 'lines',
-        name: 'Velocity v(t) [mm/s]',
+        name: 'v(t) [MM/S]',
         yaxis: 'y2',
-        line: { color: isDark ? '#BF5AF2' : '#AF52DE', width: 1.2, dash: 'dash' }
+        line: { color: isDark ? '#AAAAAA' : '#555555', width: 1, dash: 'dash' }
       });
     }
 
@@ -181,7 +176,7 @@ export function GraphsDashboard({
         x1: tEnd,
         y0: strokeLimitMm,
         y1: strokeLimitMm,
-        line: { color: '#FF453A', width: 1.5, dash: 'dash' }
+        line: { color: '#D71921', width: 1, dash: 'dash' }
       },
       {
         type: 'line',
@@ -191,7 +186,7 @@ export function GraphsDashboard({
         x1: tEnd,
         y0: -strokeLimitMm,
         y1: -strokeLimitMm,
-        line: { color: '#FF453A', width: 1.5, dash: 'dash' }
+        line: { color: '#D71921', width: 1, dash: 'dash' }
       },
       {
         type: 'line',
@@ -201,7 +196,7 @@ export function GraphsDashboard({
         x1: currentTime,
         y0: 0,
         y1: 1,
-        line: { color: '#FF9F0A', width: 1.5, dash: 'dot' }
+        line: { color: isDark ? '#FFFFFF' : '#000000', width: 1.5, dash: 'dot' }
       }
     ];
 
@@ -211,9 +206,9 @@ export function GraphsDashboard({
         y: strokeLimitMm,
         xref: 'x',
         yref: 'y',
-        text: `+Limit (${strokeLimitMm}mm)`,
+        text: `+LIMIT (${strokeLimitMm}MM)`,
         showarrow: false,
-        font: { size: 9, color: '#FF453A' },
+        font: { size: 8, color: '#D71921', family: '"Space Mono", monospace' },
         xanchor: 'left',
         yanchor: 'bottom'
       },
@@ -222,9 +217,9 @@ export function GraphsDashboard({
         y: -strokeLimitMm,
         xref: 'x',
         yref: 'y',
-        text: `-Limit (-${strokeLimitMm}mm)`,
+        text: `-LIMIT (-${strokeLimitMm}MM)`,
         showarrow: false,
-        font: { size: 9, color: '#FF453A' },
+        font: { size: 8, color: '#D71921', family: '"Space Mono", monospace' },
         xanchor: 'left',
         yanchor: 'top'
       }
@@ -233,24 +228,24 @@ export function GraphsDashboard({
     const layout = {
       ...baseLayout,
       title: {
-        text: '2. Table Displacement Profile x(t) [Zero-Drift Double Integration]',
-        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
+        text: '02 // TABLE DISPLACEMENT PROFILE x(t)',
+        font: { size: 10, color: isDark ? '#FFFFFF' : '#111111', family: '"Space Mono", monospace' },
         x: 0.02,
         y: 0.95
       },
-      xaxis: { ...baseLayout.xaxis, title: { text: 'Time (s)', font: { size: 10 } } },
-      yaxis: { ...baseLayout.yaxis, title: { text: 'Displacement (mm)', font: { size: 10 } } },
+      xaxis: { ...baseLayout.xaxis, title: { text: 'TIME (S)', font: { size: 9 } } },
+      yaxis: { ...baseLayout.yaxis, title: { text: 'DISPLACEMENT (MM)', font: { size: 9 } } },
       shapes,
       annotations
     };
 
     if (showVelocity) {
       layout.yaxis2 = {
-        title: { text: 'Velocity (mm/s)', font: { size: 10, color: isDark ? '#BF5AF2' : '#AF52DE' } },
+        title: { text: 'VEL (MM/S)', font: { size: 9, color: isDark ? '#AAAAAA' : '#555555' } },
         overlaying: 'y',
         side: 'right',
         showgrid: false,
-        tickfont: { size: 9, color: isDark ? '#BF5AF2' : '#AF52DE' }
+        tickfont: { size: 8, color: isDark ? '#AAAAAA' : '#555555' }
       };
     }
 
@@ -268,9 +263,9 @@ export function GraphsDashboard({
         type: 'scatter',
         mode: 'lines',
         fill: 'tozeroy',
-        name: 'Spectral Magnitude |X(f)|',
-        line: { color: isDark ? '#5E5CE6' : '#5856D6', width: 1.8 },
-        fillcolor: isDark ? 'rgba(94, 92, 230, 0.15)' : 'rgba(88, 86, 214, 0.1)'
+        name: '|X(f)|',
+        line: { color: isDark ? '#FFFFFF' : '#111111', width: 1.5 },
+        fillcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
       }
     ];
 
@@ -281,16 +276,16 @@ export function GraphsDashboard({
         y: fftData.peakMagnitude,
         xref: 'x',
         yref: 'y',
-        text: `Resonance: ${fftData.dominantFreq} Hz (${fftData.peakMagnitude.toFixed(3)})`,
+        text: `PEAK: ${fftData.dominantFreq} HZ`,
         showarrow: true,
         arrowhead: 2,
         arrowsize: 1,
-        arrowcolor: isDark ? '#0A84FF' : '#0071E3',
+        arrowcolor: '#D71921',
         ax: 20,
         ay: -25,
-        font: { size: 10, color: isDark ? '#0A84FF' : '#0071E3' },
-        bgcolor: isDark ? '#161B22' : '#FFFFFF',
-        bordercolor: isDark ? '#0A84FF' : '#0071E3',
+        font: { size: 9, color: '#D71921', family: '"Space Mono", monospace' },
+        bgcolor: isDark ? '#121214' : '#FFFFFF',
+        bordercolor: '#D71921',
         borderwidth: 1
       });
     }
@@ -298,13 +293,13 @@ export function GraphsDashboard({
     const layout = {
       ...baseLayout,
       title: {
-        text: `3. FFT Amplitude Spectrum (Peak Resonance: ${fftData.dominantFreq} Hz)`,
-        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
+        text: `03 // FFT SPECTRUM (PEAK: ${fftData.dominantFreq} HZ)`,
+        font: { size: 10, color: isDark ? '#FFFFFF' : '#111111', family: '"Space Mono", monospace' },
         x: 0.02,
         y: 0.95
       },
-      xaxis: { ...baseLayout.xaxis, title: { text: 'Frequency (Hz)', font: { size: 10 } }, range: [0, 25] },
-      yaxis: { ...baseLayout.yaxis, title: { text: 'Magnitude', font: { size: 10 } } },
+      xaxis: { ...baseLayout.xaxis, title: { text: 'FREQ (HZ)', font: { size: 9 } }, range: [0, 25] },
+      yaxis: { ...baseLayout.yaxis, title: { text: 'MAGNITUDE', font: { size: 9 } } },
       annotations
     };
 
@@ -320,8 +315,8 @@ export function GraphsDashboard({
       y: accelArray,
       type: 'scatter',
       mode: 'lines',
-      name: 'Commanded Accel (g)',
-      line: { color: isDark ? '#0A84FF' : '#0071E3', width: 1.6 }
+      name: 'CMD ACCEL (G)',
+      line: { color: isDark ? '#777777' : '#999999', width: 1.2 }
     };
 
     let traceMeas = null;
@@ -335,8 +330,8 @@ export function GraphsDashboard({
         y: streamAccel,
         type: 'scatter',
         mode: 'lines',
-        name: 'Measured ADXL356 (g)',
-        line: { color: isDark ? '#30D158' : '#34C759', width: 1.8 }
+        name: 'ADXL356 MEAS',
+        line: { color: '#D71921', width: 1.6 }
       };
     } else {
       traceMeas = {
@@ -344,8 +339,8 @@ export function GraphsDashboard({
         y: accelArray.map(a => a * 0.98 + (Math.sin(a * 15) * 0.004)),
         type: 'scatter',
         mode: 'lines',
-        name: 'Expected ADXL356 Loopback',
-        line: { color: isDark ? '#30D158' : '#34C759', width: 1.2, dash: 'dot' }
+        name: 'SIM LOOPBACK',
+        line: { color: '#D71921', width: 1.2, dash: 'dot' }
       };
     }
 
@@ -361,20 +356,20 @@ export function GraphsDashboard({
         x1: currentTime,
         y0: 0,
         y1: 1,
-        line: { color: '#FF9F0A', width: 1.5, dash: 'dot' }
+        line: { color: '#D71921', width: 1.5, dash: 'dot' }
       }
     ];
 
     const layout = {
       ...baseLayout,
       title: {
-        text: '4. Telemetry Overlay: Commanded vs. ADXL356 Accelerometer',
-        font: { size: 12, color: isDark ? '#F1F5F9' : '#0F172A', weight: 600 },
+        text: '04 // TELEMETRY: COMMANDED VS ADXL356 SENSOR',
+        font: { size: 10, color: isDark ? '#FFFFFF' : '#111111', family: '"Space Mono", monospace' },
         x: 0.02,
         y: 0.95
       },
-      xaxis: { ...baseLayout.xaxis, title: { text: 'Time (s)', font: { size: 10 } } },
-      yaxis: { ...baseLayout.yaxis, title: { text: 'Acceleration (g)', font: { size: 10 } } },
+      xaxis: { ...baseLayout.xaxis, title: { text: 'TIME (S)', font: { size: 9 } } },
+      yaxis: { ...baseLayout.yaxis, title: { text: 'ACCEL (G)', font: { size: 9 } } },
       shapes
     };
 
@@ -398,78 +393,75 @@ export function GraphsDashboard({
   }, []);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 font-space">
       
       {/* Top Telemetry Summary Pill Bar */}
-      <div className="p-4 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-wrap items-center justify-between gap-4 font-tabular text-xs">
+      <div className="nothing-card p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
         
         {/* Telemetry Accuracy Scores */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
-            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">Correlation (Rxy):</span>
-            <span className={`text-xs font-bold ${metrics.correlationPercent >= 90 ? 'text-emerald-500' : 'text-amber-500'}`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-[#121214]">
+            <span className="text-[10px] text-neutral-400 uppercase">RXY FIDELITY:</span>
+            <span className={`text-xs font-bold ${metrics.correlationPercent >= 90 ? 'text-[#D71921]' : 'text-amber-500'}`}>
               {metrics.correlationPercent}%
             </span>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
-            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">RMSE Error:</span>
-            <span className="text-xs font-bold text-[#0071E3] dark:text-[#0A84FF]">
-              {metrics.rmse.toFixed(4)} g
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-[#121214]">
+            <span className="text-[10px] text-neutral-400 uppercase">RMSE:</span>
+            <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+              {metrics.rmse.toFixed(4)} G
             </span>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
-            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">Phase Lag (τ):</span>
-            <span className="text-xs font-bold text-amber-500">
-              {metrics.latencyMs >= 0 ? `+${metrics.latencyMs}` : metrics.latencyMs} ms
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-[#121214]">
+            <span className="text-[10px] text-neutral-400 uppercase">LAG:</span>
+            <span className="text-xs font-bold text-neutral-900 dark:text-neutral-100">
+              {metrics.latencyMs >= 0 ? `+${metrics.latencyMs}` : metrics.latencyMs} MS
             </span>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
-            <span className="text-[10px] text-neutral-400 font-mono uppercase tracking-wider">Zero Return:</span>
-            <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-              <CheckCircle className="w-3.5 h-3.5" />
-              0.00 mm
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-[#121214]">
+            <span className="text-[10px] text-neutral-400 uppercase">DRIFT:</span>
+            <span className="text-xs font-bold text-[#D71921]">
+              0.00 MM
             </span>
           </div>
         </div>
 
-        {/* Chart View Controls */}
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white select-none text-xs font-medium">
-            <input
-              type="checkbox"
-              checked={showVelocity}
-              onChange={(e) => setShowVelocity(e.target.checked)}
-              className="accent-[#0071E3] dark:accent-[#0A84FF] rounded-md cursor-pointer"
-            />
-            <span>Overlay Velocity v(t)</span>
-          </label>
-        </div>
+        {/* Velocity Overlay Checkbox */}
+        <label className="flex items-center gap-2 cursor-pointer text-neutral-600 dark:text-neutral-300 select-none text-xs font-mono">
+          <input
+            type="checkbox"
+            checked={showVelocity}
+            onChange={(e) => setShowVelocity(e.target.checked)}
+            className="accent-[#D71921] rounded cursor-pointer"
+          />
+          <span className="uppercase text-[11px]">Overlay Velocity v(t)</span>
+        </label>
       </div>
 
-      {/* 4 Interactive Apple HIG Engineering Charts Grid */}
+      {/* 4 Interactive Engineering Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* Chart 1: Input Acceleration */}
-        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
-          <div ref={accelPlotRef} className="w-full h-[280px]" />
+        <div className="nothing-card p-3 flex flex-col">
+          <div ref={accelPlotRef} className="w-full h-[270px]" />
         </div>
 
         {/* Chart 2: Displacement Profile */}
-        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
-          <div ref={dispPlotRef} className="w-full h-[280px]" />
+        <div className="nothing-card p-3 flex flex-col">
+          <div ref={dispPlotRef} className="w-full h-[270px]" />
         </div>
 
         {/* Chart 3: FFT Spectrum */}
-        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
-          <div ref={fftPlotRef} className="w-full h-[280px]" />
+        <div className="nothing-card p-3 flex flex-col">
+          <div ref={fftPlotRef} className="w-full h-[270px]" />
         </div>
 
         {/* Chart 4: Commanded vs Measured Telemetry */}
-        <div className="p-3.5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-xl flex flex-col">
-          <div ref={telemetryPlotRef} className="w-full h-[280px]" />
+        <div className="nothing-card p-3 flex flex-col">
+          <div ref={telemetryPlotRef} className="w-full h-[270px]" />
         </div>
 
       </div>

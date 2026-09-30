@@ -7,12 +7,8 @@ import {
   Timer, 
   ShieldCheck, 
   TrendingUp, 
-  Layers, 
   Compass, 
-  Cpu, 
-  Gauge, 
-  CheckCircle2, 
-  Download 
+  Cpu
 } from 'lucide-react';
 
 export function AnalyticsView({ 
@@ -76,10 +72,8 @@ export function AnalyticsView({
       if (d > maxAbsD) maxAbsD = d;
     }
 
-    // Arias Intensity: Ia = (pi / (2 * g)) * integral(a(t)^2 dt) in m/s
     const totalIa = (Math.PI / (2 * gMs2)) * runningEnergy;
 
-    // Husid curve normalized to 0-100%
     const husidNorm = new Float64Array(accelG.length);
     let t5 = time[0];
     let t95 = time[time.length - 1];
@@ -106,7 +100,7 @@ export function AnalyticsView({
     return {
       pgaG: maxAbsA,
       pgaMs2: maxAbsA * gMs2,
-      pgvCmS: maxAbsV * 0.1, // mm/s to cm/s
+      pgvCmS: maxAbsV * 0.1,
       pgdMm: maxAbsD,
       ariasIntensity: totalIa,
       cav: cavSum,
@@ -116,34 +110,29 @@ export function AnalyticsView({
     };
   }, [dspResult]);
 
-  // Compute 5% Damped Elastic Pseudo-Acceleration Response Spectrum Sa(T)
+  // Compute 5% Damped Elastic Response Spectrum Sa(T)
   const responseSpectrum = useMemo(() => {
     const accelG = dspResult.accelFiltered || [];
     const dt = dspResult.dt || 0.02;
 
     if (accelG.length < 10) return { periods: [], sa: [] };
 
-    // Standard structural periods from 0.05s to 3.0s (40 points)
     const periods = [];
     for (let T = 0.05; T <= 3.01; T += 0.075) {
       periods.push(Number(T.toFixed(3)));
     }
 
     const saValues = [];
-    const xi = 0.05; // 5% critical structural damping
+    const xi = 0.05;
 
     for (let p of periods) {
       const omega = (2 * Math.PI) / p;
-      const omegaD = omega * Math.sqrt(1 - xi * xi);
-
-      // SDOF Newmark-beta linear numerical oscillator
       let u = 0;
       let v = 0;
       let maxAbsU = 0;
 
       for (let i = 1; i < accelG.length; i++) {
         const ag = accelG[i] * 9.80665;
-        // Approximate single degree-of-freedom state transition
         const fSpring = -omega * omega * u;
         const fDamping = -2 * xi * omega * v;
         const aRel = fSpring + fDamping - ag;
@@ -155,7 +144,6 @@ export function AnalyticsView({
         if (absU > maxAbsU) maxAbsU = absU;
       }
 
-      // Pseudo-acceleration: Sa = omega^2 * max(|u|) / 9.80665 (in g)
       const sa = (omega * omega * maxAbsU) / 9.80665;
       saValues.push(Number(sa.toFixed(4)));
     }
@@ -174,32 +162,32 @@ export function AnalyticsView({
       mode: 'lines',
       name: 'Sa (ξ = 5%)',
       line: {
-        color: isDark ? '#0A84FF' : '#0071E3',
-        width: 2.5,
+        color: '#D71921',
+        width: 2.2,
         shape: 'spline'
       },
       fill: 'tozeroy',
-      fillcolor: isDark ? 'rgba(10, 132, 255, 0.12)' : 'rgba(0, 113, 227, 0.1)'
+      fillcolor: isDark ? 'rgba(215, 25, 33, 0.12)' : 'rgba(215, 25, 33, 0.08)'
     };
 
     const layout = {
       paper_bgcolor: 'transparent',
-      plot_bgcolor: 'transparent',
+      plot_bgcolor: isDark ? '#0A0A0C' : '#F9F9FB',
       font: {
-        family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
-        size: 11,
-        color: isDark ? '#94A3B8' : '#64748B'
+        family: '"Space Mono", monospace',
+        size: 9.5,
+        color: isDark ? '#888888' : '#555555'
       },
       margin: { l: 45, r: 15, t: 15, b: 35 },
       xaxis: {
-        title: { text: 'Natural Period T (seconds)', font: { size: 10 } },
-        gridcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-        zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'
+        title: { text: 'NATURAL PERIOD T (S)', font: { size: 9 } },
+        gridcolor: isDark ? '#1C1C20' : '#E5E5E7',
+        zerolinecolor: isDark ? '#333338' : '#CCCCCC'
       },
       yaxis: {
-        title: { text: 'Pseudo-Accel Sa (g)', font: { size: 10 } },
-        gridcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-        zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'
+        title: { text: 'PSEUDO-ACCEL Sa (G)', font: { size: 9 } },
+        gridcolor: isDark ? '#1C1C20' : '#E5E5E7',
+        zerolinecolor: isDark ? '#333338' : '#CCCCCC'
       },
       showlegend: false
     };
@@ -217,34 +205,34 @@ export function AnalyticsView({
       y: engineeringMetrics.husidEnergy,
       type: 'scatter',
       mode: 'lines',
-      name: 'Husid Normalized Energy',
+      name: 'HUSID ENERGY',
       line: {
-        color: isDark ? '#30D158' : '#34C759',
-        width: 2.2
+        color: isDark ? '#FFFFFF' : '#111111',
+        width: 1.8
       },
       fill: 'tozeroy',
-      fillcolor: isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(52, 199, 89, 0.1)'
+      fillcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'
     };
 
     const layout = {
       paper_bgcolor: 'transparent',
-      plot_bgcolor: 'transparent',
+      plot_bgcolor: isDark ? '#0A0A0C' : '#F9F9FB',
       font: {
-        family: '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
-        size: 11,
-        color: isDark ? '#94A3B8' : '#64748B'
+        family: '"Space Mono", monospace',
+        size: 9.5,
+        color: isDark ? '#888888' : '#555555'
       },
       margin: { l: 45, r: 15, t: 15, b: 35 },
       xaxis: {
-        title: { text: 'Time (seconds)', font: { size: 10 } },
-        gridcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-        zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'
+        title: { text: 'TIME (S)', font: { size: 9 } },
+        gridcolor: isDark ? '#1C1C20' : '#E5E5E7',
+        zerolinecolor: isDark ? '#333338' : '#CCCCCC'
       },
       yaxis: {
-        title: { text: 'Husid Energy (%)', font: { size: 10 } },
+        title: { text: 'ENERGY (%)', font: { size: 9 } },
         range: [0, 105],
-        gridcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
-        zerolinecolor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)'
+        gridcolor: isDark ? '#1C1C20' : '#E5E5E7',
+        zerolinecolor: isDark ? '#333338' : '#CCCCCC'
       },
       showlegend: false
     };
@@ -254,41 +242,41 @@ export function AnalyticsView({
   }, [engineeringMetrics.husidTime, engineeringMetrics.husidEnergy, isDark]);
 
   return (
-    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-300">
+    <div className="flex flex-col gap-6 w-full animate-in fade-in duration-200 font-space">
       
       {/* Top Banner */}
-      <div className="p-6 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm dark:shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="nothing-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              <BarChart3 className="w-3 h-3" />
-              Structural Dynamics & Spectral Analysis
+            <span className="w-2 h-2 rounded-full bg-[#D71921]" />
+            <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">
+              [ SPECTRAL ANALYSIS // 03 ]
             </span>
-            <span className="text-xs text-neutral-400 dark:text-neutral-500">•</span>
-            <span className="text-xs text-neutral-500 dark:text-neutral-400 font-mono font-medium">
-              Record: {waveformMeta?.name || 'Seismic Waveform'}
+            <span className="text-neutral-400">•</span>
+            <span className="text-[10px] font-mono text-neutral-500 uppercase">
+              RECORD: {waveformMeta?.name || 'SEISMIC WAVEFORM'}
             </span>
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
-            Ground Motion Severity & Building Response
+          <h2 className="font-ndot text-2xl tracking-wider uppercase font-bold text-neutral-900 dark:text-neutral-100">
+            STRUCTURAL DYNAMICS & ENERGY SPECTRUM
           </h2>
-          <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1 max-w-2xl">
-            Quantitative structural engineering telemetry including 5% damped elastic response spectra, Arias intensity energy accumulation, and modal resonance characteristics.
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-1 max-w-2xl font-mono leading-relaxed">
+            Quantitative ground motion severity metrics including 5% damped elastic response spectra, Arias intensity energy accumulation, and modal resonant characteristics.
           </p>
         </div>
 
-        {/* Live Telemetry Health Score */}
-        <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-neutral-100/70 dark:bg-white/[0.04] border border-black/[0.04] dark:border-white/[0.06]">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-            <ShieldCheck className="w-5 h-5" />
+        {/* Telemetry Fidelity Score */}
+        <div className="flex items-center gap-3 p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-[#141416]">
+          <div className="w-8 h-8 rounded-full border border-[#D71921] flex items-center justify-center text-[#D71921] font-bold">
+            <ShieldCheck className="w-4 h-4" />
           </div>
           <div>
-            <div className="text-[10px] uppercase font-mono text-neutral-400">Simulation Fidelity</div>
-            <div className="text-sm font-bold font-tabular text-neutral-900 dark:text-neutral-100">
-              {metrics?.correlationPercent?.toFixed(1) || '99.4'}% Rxy Match
+            <div className="text-[10px] font-mono text-neutral-400 uppercase">SIMULATION FIDELITY</div>
+            <div className="text-sm font-bold font-mono text-neutral-900 dark:text-neutral-100">
+              {metrics?.correlationPercent?.toFixed(1) || '99.4'}% RXY
             </div>
-            <div className="text-[11px] font-mono text-emerald-500">
-              RMSE: {metrics?.rmse?.toFixed(4) || '0.0032'}g
+            <div className="text-[10px] font-mono text-[#D71921]">
+              RMSE: {metrics?.rmse?.toFixed(4) || '0.0032'} G
             </div>
           </div>
         </div>
@@ -298,90 +286,90 @@ export function AnalyticsView({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
         
         {/* PGA */}
-        <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-[#161B22]/70 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="text-[10px] uppercase font-mono text-neutral-400 font-medium">Peak Accel (PGA)</div>
-          <div className="text-xl font-bold font-tabular text-neutral-900 dark:text-neutral-100 mt-1">
-            {engineeringMetrics.pgaG.toFixed(3)} <span className="text-xs font-normal text-neutral-500">g</span>
+        <div className="nothing-card p-4">
+          <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">PEAK ACCEL (PGA)</div>
+          <div className="text-xl font-bold font-mono text-neutral-900 dark:text-neutral-100 mt-1">
+            {engineeringMetrics.pgaG.toFixed(3)} <span className="text-xs font-normal text-neutral-400">G</span>
           </div>
-          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
-            {engineeringMetrics.pgaMs2.toFixed(2)} m/s²
+          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+            {engineeringMetrics.pgaMs2.toFixed(2)} M/S²
           </div>
         </div>
 
         {/* PGV */}
-        <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-[#161B22]/70 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="text-[10px] uppercase font-mono text-neutral-400 font-medium">Peak Velocity (PGV)</div>
-          <div className="text-xl font-bold font-tabular text-neutral-900 dark:text-neutral-100 mt-1">
-            {engineeringMetrics.pgvCmS.toFixed(1)} <span className="text-xs font-normal text-neutral-500">cm/s</span>
+        <div className="nothing-card p-4">
+          <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">PEAK VELOCITY (PGV)</div>
+          <div className="text-xl font-bold font-mono text-neutral-900 dark:text-neutral-100 mt-1">
+            {engineeringMetrics.pgvCmS.toFixed(1)} <span className="text-xs font-normal text-neutral-400">CM/S</span>
           </div>
-          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
-            Near-fault indicator
+          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+            NEAR-FAULT PULSE
           </div>
         </div>
 
         {/* PGD */}
-        <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-[#161B22]/70 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="text-[10px] uppercase font-mono text-neutral-400 font-medium">Peak Stroke (PGD)</div>
-          <div className="text-xl font-bold font-tabular text-neutral-900 dark:text-neutral-100 mt-1">
-            {engineeringMetrics.pgdMm.toFixed(2)} <span className="text-xs font-normal text-neutral-500">mm</span>
+        <div className="nothing-card p-4">
+          <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">PEAK STROKE (PGD)</div>
+          <div className="text-xl font-bold font-mono text-neutral-900 dark:text-neutral-100 mt-1">
+            {engineeringMetrics.pgdMm.toFixed(2)} <span className="text-xs font-normal text-neutral-400">MM</span>
           </div>
-          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
-            Carriage displacement
+          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+            CARRIAGE DISP
           </div>
         </div>
 
         {/* Arias Intensity Ia */}
-        <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-[#161B22]/70 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="text-[10px] uppercase font-mono text-neutral-400 font-medium">Arias Intensity (Ia)</div>
-          <div className="text-xl font-bold font-tabular text-blue-600 dark:text-blue-400 mt-1">
-            {engineeringMetrics.ariasIntensity.toFixed(2)} <span className="text-xs font-normal text-neutral-500">m/s</span>
+        <div className="nothing-card p-4">
+          <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">ARIAS INTENSITY (IA)</div>
+          <div className="text-xl font-bold font-mono text-[#D71921] mt-1">
+            {engineeringMetrics.ariasIntensity.toFixed(2)} <span className="text-xs font-normal text-neutral-400">M/S</span>
           </div>
-          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
-            Total earthquake energy
+          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+            TOTAL SEISMIC ENERGY
           </div>
         </div>
 
         {/* Significant Duration D5-95 */}
-        <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-[#161B22]/70 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="text-[10px] uppercase font-mono text-neutral-400 font-medium">Duration (D5-95)</div>
-          <div className="text-xl font-bold font-tabular text-neutral-900 dark:text-neutral-100 mt-1">
-            {engineeringMetrics.d595.toFixed(1)} <span className="text-xs font-normal text-neutral-500">s</span>
+        <div className="nothing-card p-4">
+          <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">DURATION (D5-95)</div>
+          <div className="text-xl font-bold font-mono text-neutral-900 dark:text-neutral-100 mt-1">
+            {engineeringMetrics.d595.toFixed(1)} <span className="text-xs font-normal text-neutral-400">S</span>
           </div>
-          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
-            Husid 5% to 95% interval
+          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+            HUSID 5-95% BRACKET
           </div>
         </div>
 
         {/* Dominant Frequency fp */}
-        <div className="p-4 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-[#161B22]/70 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="text-[10px] uppercase font-mono text-neutral-400 font-medium">Peak Resonance (fp)</div>
-          <div className="text-xl font-bold font-tabular text-amber-500 mt-1">
-            {fftData?.dominantFreq?.toFixed(2) || '2.40'} <span className="text-xs font-normal text-neutral-500">Hz</span>
+        <div className="nothing-card p-4">
+          <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider">PEAK FREQ (FP)</div>
+          <div className="text-xl font-bold font-mono text-[#D71921] mt-1">
+            {fftData?.dominantFreq?.toFixed(2) || '2.40'} <span className="text-xs font-normal text-neutral-400">HZ</span>
           </div>
-          <div className="text-[11px] font-mono text-neutral-400 mt-0.5">
-            Period: {fftData?.dominantFreq ? (1 / fftData.dominantFreq).toFixed(2) : '0.42'}s
+          <div className="text-[10px] font-mono text-neutral-500 mt-0.5">
+            TP: {fftData?.dominantFreq ? (1 / fftData.dominantFreq).toFixed(2) : '0.42'}S
           </div>
         </div>
 
       </div>
 
-      {/* 2 Detailed Analytical Plots */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* 2 Analytical Plots */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         
         {/* Pseudo-Acceleration Response Spectrum Sa */}
-        <div className="p-5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+        <div className="nothing-card p-4">
+          <div className="flex items-center justify-between mb-3 border-b border-neutral-200 dark:border-neutral-800 pb-2">
             <div>
-              <h3 className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                <Activity className="w-4 h-4 text-blue-500" />
-                Elastic Response Spectrum Sa (T, ξ = 5%)
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D71921]" />
+                ELASTIC RESPONSE SPECTRUM Sa (T, ξ = 5%)
               </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Maximum acceleration demand experienced by multi-story building frames vs fundamental period T.
+              <p className="text-[10px] text-neutral-400 mt-0.5 font-mono">
+                Maximum acceleration demand experienced by building structures vs fundamental period T.
               </p>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              Newmark-β SDOF
+            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500">
+              NEWMARK-β
             </span>
           </div>
 
@@ -389,19 +377,19 @@ export function AnalyticsView({
         </div>
 
         {/* Husid Curve / Cumulative Energy Ia(t) */}
-        <div className="p-5 rounded-3xl backdrop-blur-2xl bg-white/70 dark:bg-[#161B22]/75 border border-black/[0.06] dark:border-white/[0.08] shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+        <div className="nothing-card p-4">
+          <div className="flex items-center justify-between mb-3 border-b border-neutral-200 dark:border-neutral-800 pb-2">
             <div>
-              <h3 className="text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 flex items-center gap-1.5">
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
-                Husid Energy Accumulation Curve
+              <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#D71921]" />
+                HUSID ENERGY ACCUMULATION CURVE
               </h3>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
+              <p className="text-[10px] text-neutral-400 mt-0.5 font-mono">
                 Normalized cumulative Arias intensity over time highlighting the destructive phase (D5-95).
               </p>
             </div>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              5% - 95% Bracket
+            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-neutral-300 dark:border-neutral-700 text-neutral-500">
+              5% - 95%
             </span>
           </div>
 

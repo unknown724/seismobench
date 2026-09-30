@@ -5,13 +5,10 @@ import {
   Send, 
   Trash2, 
   Download, 
-  CheckCircle, 
-  AlertCircle,
-  Play,
-  RotateCcw,
   Usb,
   Cpu
 } from 'lucide-react';
+import { NothingSelect } from './NothingSelect';
 
 export function SerialTerminalModal({
   isOpen,
@@ -57,178 +54,161 @@ export function SerialTerminalModal({
     URL.revokeObjectURL(url);
   };
 
+  const baudOptions = [
+    { value: 115200, label: '115200 BAUD' },
+    { value: 230400, label: '230400 BAUD' },
+    { value: 460800, label: '460800 BAUD' },
+    { value: 921600, label: '921600 BAUD (DEFAULT)' }
+  ];
+
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150 font-space"
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-4xl h-[650px] rounded-3xl overflow-hidden backdrop-blur-3xl bg-white/95 dark:bg-[#161B22]/95 border border-black/10 dark:border-white/10 shadow-2xl flex flex-col text-sm"
+        className="w-full max-w-4xl h-[650px] rounded-2xl overflow-hidden border border-neutral-300 dark:border-neutral-800 bg-white dark:bg-[#0E0E10] shadow-2xl flex flex-col text-xs"
         onClick={e => e.stopPropagation()}
       >
         
         {/* Terminal Header */}
-        <div className="px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.08] flex items-center justify-between bg-neutral-100/50 dark:bg-white/[0.02]">
+        <div className="px-5 py-3.5 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between bg-neutral-50 dark:bg-[#121214]">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <Terminal className="w-4 h-4" />
-            </div>
+            <span className="w-2.5 h-2.5 rounded-full bg-[#D71921]" />
             <div>
-              <h3 className="font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight text-sm flex items-center gap-2">
-                Serial Terminal & Packet Inspector
-                <span className={`text-[10px] px-2 py-0.5 rounded-md font-mono font-medium ${
-                  !isConnected ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-500' :
-                  isSimulated ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30' :
-                  'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+              <h3 className="font-ndot font-bold text-sm tracking-wider text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
+                SERIAL TERMINAL // PACKET INSPECTOR
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono ${
+                  !isConnected ? 'border border-neutral-300 dark:border-neutral-700 text-neutral-400' :
+                  isSimulated ? 'border border-purple-500/40 text-purple-400' :
+                  'border border-[#D71921]/40 text-[#D71921]'
                 }`}>
-                  {!isConnected ? 'PORT CLOSED' : isSimulated ? 'LOOPBACK SIMULATOR' : 'PHYSICAL USB-C'}
+                  {!isConnected ? 'OFFLINE' : isSimulated ? 'LOOPBACK SIMULATOR' : 'USB-C LIVE'}
                 </span>
               </h3>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
-            {/* Baud Rate Selector */}
-            <select
-              value={baudRate}
-              onChange={(e) => onChangeBaudRate(parseInt(e.target.value))}
-              disabled={isConnected}
-              className="bg-neutral-200/60 dark:bg-white/[0.06] border border-black/[0.06] dark:border-white/[0.08] rounded-xl px-3 py-1.5 text-xs text-neutral-800 dark:text-neutral-200 font-mono disabled:opacity-50 focus:outline-none"
-            >
-              <option value="115200">115200 baud</option>
-              <option value="230400">230400 baud</option>
-              <option value="460800">460800 baud</option>
-              <option value="921600">921600 baud (Default)</option>
-            </select>
+          <div className="flex items-center gap-2">
+            <div className="w-48">
+              <NothingSelect
+                value={baudRate}
+                onChange={(val) => onChangeBaudRate(parseInt(val))}
+                options={baudOptions}
+              />
+            </div>
 
-            {/* Connect / Disconnect Buttons */}
             {!isConnected ? (
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={onConnectPhysical}
-                  className="px-3 py-1.5 bg-[#0071E3] dark:bg-[#0A84FF] hover:brightness-110 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  className="px-3 py-2 rounded-xl bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer"
                 >
                   <Usb className="w-3.5 h-3.5" />
-                  Connect
+                  <span>CONNECT</span>
                 </button>
                 <button
                   onClick={onStartSimulation}
-                  className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  className="px-3 py-2 rounded-xl border border-neutral-300 dark:border-neutral-700 text-neutral-800 dark:text-neutral-200 hover:border-neutral-500 text-xs font-bold transition-all cursor-pointer"
                 >
-                  <Cpu className="w-3.5 h-3.5" />
-                  Simulate
+                  SIMULATE
                 </button>
               </div>
             ) : (
               <button
                 onClick={onDisconnect}
-                className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                className="px-3 py-2 rounded-xl border border-rose-500/40 text-rose-500 hover:bg-rose-500 hover:text-white text-xs font-bold transition-all cursor-pointer"
               >
-                Disconnect
+                DISCONNECT
               </button>
             )}
 
             <button
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-neutral-200 dark:hover:bg-white/[0.08] text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Quick Command Shortcuts Bar */}
-        <div className="bg-neutral-100/70 dark:bg-white/[0.02] px-6 py-2 border-b border-black/[0.04] dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-xs">
+        {/* Quick Packets Bar */}
+        <div className="px-5 py-2 border-b border-neutral-200 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-2 text-[11px] bg-neutral-100 dark:bg-[#141416]">
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-neutral-400 font-mono">Quick Packets:</span>
-            <button
-              onClick={() => onSendCommand('{"cmd":"PING"}')}
-              className="px-2.5 py-1 rounded-lg bg-neutral-200/60 dark:bg-white/[0.04] hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 font-mono text-[11px] transition-colors"
-            >
-              PING
-            </button>
-            <button
-              onClick={() => onSendCommand('{"cmd":"STATUS"}')}
-              className="px-2.5 py-1 rounded-lg bg-neutral-200/60 dark:bg-white/[0.04] hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 font-mono text-[11px] transition-colors"
-            >
-              STATUS
-            </button>
-            <button
-              onClick={() => onSendCommand('{"cmd":"HOME"}')}
-              className="px-2.5 py-1 rounded-lg bg-neutral-200/60 dark:bg-white/[0.04] hover:bg-neutral-200 text-neutral-700 dark:text-neutral-300 font-mono text-[11px] transition-colors"
-            >
-              HOME
-            </button>
-            <button
-              onClick={() => onSendCommand('{"cmd":"ESTOP"}')}
-              className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-mono text-[11px] font-bold transition-colors"
-            >
-              ESTOP
-            </button>
+            <span className="text-neutral-400 font-mono">QUICK:</span>
+            {['PING', 'STATUS', 'HOME', 'ESTOP'].map(cmd => (
+              <button
+                key={cmd}
+                onClick={() => onSendCommand(`{"cmd":"${cmd}"}`)}
+                className={`px-2.5 py-0.5 rounded-md font-mono border transition-all cursor-pointer ${
+                  cmd === 'ESTOP'
+                    ? 'border-rose-500/40 text-rose-500 hover:bg-rose-500 hover:text-white font-bold'
+                    : 'border-neutral-300 dark:border-neutral-700 hover:border-neutral-500 text-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                {cmd}
+              </button>
+            ))}
           </div>
 
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 text-xs cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-neutral-500 text-xs cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={autoscroll}
                 onChange={(e) => setAutoscroll(e.target.checked)}
-                className="accent-blue-500 rounded"
+                className="accent-[#D71921] rounded"
               />
-              <span>Autoscroll</span>
+              <span>AUTOSCROLL</span>
             </label>
 
             <button
               onClick={handleExportLog}
-              className="text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1 text-xs transition-colors"
-              title="Export Log to .log file"
+              className="text-neutral-500 hover:text-neutral-900 dark:hover:text-white flex items-center gap-1 text-xs"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export</span>
+              <span>EXPORT</span>
             </button>
 
             <button
               onClick={onClearLog}
-              className="text-neutral-500 dark:text-neutral-400 hover:text-rose-500 flex items-center gap-1 text-xs transition-colors"
-              title="Clear packet history"
+              className="text-neutral-500 hover:text-[#D71921] flex items-center gap-1 text-xs"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear</span>
+              <span>CLEAR</span>
             </button>
           </div>
         </div>
 
-        {/* Packet Feed Window */}
-        <div className="flex-1 bg-neutral-900 dark:bg-[#0B0E14] p-4 overflow-y-auto font-mono text-xs text-neutral-200 space-y-1 select-text">
+        {/* Terminal Log Console */}
+        <div className="flex-1 bg-[#060608] p-4 overflow-y-auto font-mono text-xs text-neutral-300 space-y-1 select-text">
           {packetLog.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-neutral-500 space-y-2">
+            <div className="h-full flex flex-col items-center justify-center text-neutral-600 space-y-2">
               <Terminal className="w-8 h-8 opacity-40" />
-              <p>No packet activity recorded yet.</p>
-              <p className="text-[11px] opacity-75">Connect physical USB-C port or launch Simulator to start telemetry stream.</p>
+              <p>NO PACKET ACTIVITY RECORDED</p>
+              <p className="text-[10px] opacity-75">Connect physical USB-C port or launch Simulator to stream telemetry.</p>
             </div>
           ) : (
             packetLog.map((pkt, index) => {
               const isTx = pkt.type === 'TX';
               const isRx = pkt.type === 'RX';
               const isTelemetry = pkt.type === 'TELEMETRY';
-              const isErr = pkt.type === 'ERR';
 
-              let badgeColor = 'text-blue-400 bg-blue-950/60 border-blue-800/40';
-              if (isRx) badgeColor = 'text-emerald-400 bg-emerald-950/60 border-emerald-800/40';
-              if (isTelemetry) badgeColor = 'text-cyan-400 bg-cyan-950/40 border-cyan-800/30';
-              if (isErr) badgeColor = 'text-rose-400 bg-rose-950/60 border-rose-800/40';
+              let badgeColor = 'text-blue-400 border-blue-500/40';
+              if (isRx) badgeColor = 'text-emerald-400 border-emerald-500/40';
+              if (isTelemetry) badgeColor = 'text-neutral-400 border-neutral-700';
 
               return (
-                <div key={index} className="flex items-start gap-2 hover:bg-white/[0.02] py-0.5 px-1 rounded transition-colors">
-                  <span className="text-neutral-500 shrink-0 text-[10px]">{pkt.time}</span>
-                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold border shrink-0 ${badgeColor}`}>
+                <div key={index} className="flex items-start gap-2 py-0.5 px-1 hover:bg-white/[0.03] rounded">
+                  <span className="text-neutral-600 text-[10px]">{pkt.time}</span>
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-mono border ${badgeColor}`}>
                     {pkt.type}
                   </span>
                   <span className={`break-all ${
                     isTx ? 'text-blue-300' :
                     isRx ? 'text-emerald-300' :
-                    isTelemetry ? 'text-neutral-400 text-[11px]' :
-                    'text-rose-300'
+                    isTelemetry ? 'text-neutral-400 text-[10px]' :
+                    'text-rose-400'
                   }`}>
                     {pkt.raw}
                   </span>
@@ -239,22 +219,22 @@ export function SerialTerminalModal({
           <div ref={logEndRef} />
         </div>
 
-        {/* Input Command Field */}
-        <form onSubmit={handleSubmit} className="p-3.5 bg-neutral-100/70 dark:bg-white/[0.02] border-t border-black/[0.04] dark:border-white/[0.06] flex items-center gap-2">
-          <span className="text-neutral-400 font-mono text-sm pl-2">&gt;</span>
+        {/* Command Input Form */}
+        <form onSubmit={handleSubmit} className="p-3 bg-neutral-100 dark:bg-[#121214] border-t border-neutral-200 dark:border-neutral-800 flex items-center gap-2">
+          <span className="text-[#D71921] font-mono font-bold pl-2">&gt;</span>
           <input
             type="text"
             value={commandInput}
             onChange={(e) => setCommandInput(e.target.value)}
-            placeholder="Type JSON command or raw ASCII (e.g., {'cmd':'SHAKE'})..."
-            className="flex-1 bg-white dark:bg-neutral-900 border border-black/[0.08] dark:border-white/[0.08] rounded-xl px-3 py-2 text-xs text-neutral-900 dark:text-neutral-100 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            placeholder="Type JSON command or ASCII (e.g. {'cmd':'SHAKE'})..."
+            className="flex-1 bg-white dark:bg-[#060608] border border-neutral-300 dark:border-neutral-800 rounded-xl px-3 py-2 text-xs text-neutral-900 dark:text-neutral-100 font-mono focus:outline-none focus:border-[#D71921]"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-[#0071E3] dark:bg-[#0A84FF] hover:brightness-110 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            className="px-4 py-2 bg-[#D71921] hover:bg-[#b5141b] text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>Send</span>
+            <Send className="w-3 h-3" />
+            <span>SEND</span>
           </button>
         </form>
 
